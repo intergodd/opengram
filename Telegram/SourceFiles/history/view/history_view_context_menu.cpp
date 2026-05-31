@@ -72,6 +72,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_photo.h"
 #include "data/data_photo_media.h"
 #include "data/data_document.h"
+#include "data/data_document_media.h"
 #include "data/data_media_types.h"
 #include "data/data_poll.h"
 #include "data/data_forum_topic.h"
@@ -98,6 +99,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/application.h"
 #include "main/main_app_config.h"
 #include "main/main_session.h"
+#include "plugins/plugins_bridge.h"
 #include "main/main_session_settings.h"
 #include "media/audio/media_audio.h"
 #include "media/player/media_player_instance.h"
@@ -338,6 +340,36 @@ void AddDocumentActions(
 				menu,
 				menu->st().menu,
 				Menu::RateTranscribeCallbackFactory(item)));
+		}
+	}
+	if (document->filename().endsWith(u".plg"_q, Qt::CaseInsensitive)) {
+		const auto name = document->filename();
+		const auto weak = base::make_weak(list.get());
+		if (session->plugins().isInstalled(name)) {
+			menu->addAction(u"Remove plugin"_q, [=] {
+				session->plugins().removePlugin(name);
+				if (const auto strong = weak.get()) {
+					strong->controller()->showToast(
+						u"Plugin removed: %1"_q.arg(name));
+				}
+			}, &st::menuIconDelete);
+		} else {
+			menu->addAction(u"Install plugin"_q, [=] {
+				const auto view = document->createMediaView();
+				if (view->loaded()) {
+					session->plugins().installPlugin(name, view->bytes());
+					if (const auto strong = weak.get()) {
+						strong->controller()->showToast(
+							u"Plugin installed: %1"_q.arg(name));
+					}
+				} else {
+					document->save(Data::FileOrigin(), QString());
+					if (const auto strong = weak.get()) {
+						strong->controller()->showToast(
+							u"Downloading plugin, open the menu again."_q);
+					}
+				}
+			}, &st::menuIconDownload);
 		}
 	}
 	AddSaveDocumentAction(menu, item, document, list);

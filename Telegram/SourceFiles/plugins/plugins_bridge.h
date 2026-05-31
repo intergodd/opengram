@@ -55,6 +55,10 @@ public:
 	[[nodiscard]] static std::optional<Plugin> ReadMetadata(
 		const QString &path);
 
+	[[nodiscard]] bool isInstalled(const QString &name) const;
+	void installPlugin(const QString &name, const QByteArray &content);
+	void removePlugin(const QString &name);
+
 private:
 	void start();
 	void ensureDirectory();

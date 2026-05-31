@@ -85,6 +85,7 @@ void CopyTree(const QString &from, const QString &to) {
 	return cWorkingDir() + u"plugins"_q;
 }
 
+<<<<<<< HEAD
 [[nodiscard]] QString CanonicalName(const QString &fileName) {
 	return fileName.endsWith(kDisabledSuffix, Qt::CaseInsensitive)
 		? fileName.left(fileName.size() - kDisabledSuffix.size())
@@ -104,6 +105,10 @@ void CopyTree(const QString &from, const QString &to) {
 [[nodiscard]] QString MetaValue(const QString &source, const QString &field) {
 	auto result = CapturedValue(source, u"__"_q + field + u"__"_q);
 	return result.isEmpty() ? CapturedValue(source, field) : result;
+}
+
+[[nodiscard]] QString PluginFilePath(const QString &name) {
+	return PluginsRoot() + u"/installed/"_q + QFileInfo(name).fileName();
 }
 
 } // namespace
@@ -175,6 +180,26 @@ void Bridge::start() {
 	) | rpl::on_next([=](not_null<HistoryItem*> item) {
 		handleIncoming(item);
 	}, _lifetime);
+}
+
+bool Bridge::isInstalled(const QString &name) const {
+	return QFile::exists(PluginFilePath(name));
+}
+
+void Bridge::installPlugin(const QString &name, const QByteArray &content) {
+	ensureDirectory();
+	auto file = QFile(PluginFilePath(name));
+	if (file.open(QIODevice::WriteOnly)) {
+		file.write(content);
+		file.close();
+		requestReload();
+	}
+}
+
+void Bridge::removePlugin(const QString &name) {
+	if (QFile::remove(PluginFilePath(name))) {
+		requestReload();
+	}
 }
 
 std::optional<Plugin> Bridge::ReadMetadata(const QString &path) {
