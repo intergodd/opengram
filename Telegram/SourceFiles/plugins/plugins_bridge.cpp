@@ -350,7 +350,7 @@ void Bridge::handleOutgoing(
 		{ u"event"_q, u"outgoing_message"_q },
 		{ u"chat"_q, QString::number(peer->id.value) },
 		{ u"text"_q, text },
-		{ u"reply_to"_q, int(replyToId.value) },
+		{ u"reply_to"_q, replyToId.bare },
 		{ u"reply_path"_q, replyPath },
 	});
 }
@@ -397,7 +397,9 @@ void Bridge::handleAction(const QJsonObject &action) {
 			const auto content = file.readAll();
 			auto action = Api::SendAction(history);
 			if (replyToId) {
-				action.replyTo.messageId = replyToId;
+				action.replyTo.messageId = FullMsgId(
+					history->peer->id,
+					MsgId(replyToId));
 			}
 			const auto isPhoto = path.endsWith(u".png"_q, Qt::CaseInsensitive)
 				|| path.endsWith(u".jpg"_q, Qt::CaseInsensitive)

@@ -44,6 +44,12 @@ public:
 	void setEnabled(const QString &fileName, bool enabled);
 	void requestReload();
 
+	void handleOutgoing(
+		not_null<PeerData*> peer,
+		const QString &text,
+		MsgId replyToId,
+		const QString &replyPath);
+
 	[[nodiscard]] rpl::producer<> changes() const;
 
 	[[nodiscard]] static std::optional<Plugin> ReadMetadata(
@@ -53,11 +59,6 @@ private:
 	void start();
 	void ensureDirectory();
 	void handleIncoming(not_null<HistoryItem*> item);
-	void handleOutgoing(
-		not_null<PeerData*> peer,
-		const QString &text,
-		MsgId replyToId,
-		const QString &replyPath);
 	void sendEvent(const QJsonObject &event);
 	void readActions();
 	void handleAction(const QJsonObject &action);
