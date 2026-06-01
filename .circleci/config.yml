@@ -18,15 +18,19 @@ jobs:
 
       - run:
           name: Prepare Dependencies
+          shell: cmd.exe # Явно переключаем шаг на CMD
           command: |
+            call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
             cd Telegram\build\prepare
-            cmd.exe /c "win.bat silent"
+            call win.bat silent
 
       - run:
           name: CMake Configure & Build
+          shell: cmd.exe
           command: |
+            call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
             cd Telegram
-            cmd.exe /c "configure.bat x64 -D TDESKTOP_API_ID=29752883 -D TDESKTOP_API_HASH=660c7a8e6afba4eaf178b61a19aec18d -D CMAKE_CONFIGURATION_TYPES=MinSizeRel -D DESKTOP_APP_DISABLE_AUTOUPDATE=OFF"
+            call configure.bat x64 -D TDESKTOP_API_ID=29752883 -D TDESKTOP_API_HASH=660c7a8e6afba4eaf178b61a19aec18d -D CMAKE_CONFIGURATION_TYPES=MinSizeRel -D DESKTOP_APP_DISABLE_AUTOUPDATE=OFF
             cmake --build out --config MinSizeRel --parallel
 
       - store_artifacts:
