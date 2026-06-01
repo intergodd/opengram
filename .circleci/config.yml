@@ -1,0 +1,34 @@
+version: 2.1
+
+orbs:
+  win: circleci/windows@5.0
+
+jobs:
+  build:
+    executor:
+      name: win/server-2022
+      size: "medium"
+    
+    steps:
+      - checkout
+
+      - run:
+          name: Update Submodules
+          command: git submodule update --init --recursive
+
+      - run:
+          name: Prepare Dependencies
+          command: |
+            cd Telegram\build\prepare
+            cmd.exe /c "win.bat silent"
+
+      - run:
+          name: CMake Configure & Build
+          command: |
+            cd Telegram
+            cmd.exe /c "configure.bat x64 -D TDESKTOP_API_ID=29752883 -D TDESKTOP_API_HASH=660c7a8e6afba4eaf178b61a19aec18d -D CMAKE_CONFIGURATION_TYPES=MinSizeRel -D DESKTOP_APP_DISABLE_AUTOUPDATE=OFF"
+            cmake --build out --config MinSizeRel --parallel
+
+      - store_artifacts:
+          path: out/MinSizeRel
+          destination: build_output
