@@ -329,7 +329,7 @@ void LogsBox(not_null<Ui::GenericBox*> box, not_null<Window::SessionController*>
 
 	const auto accumulated = std::make_shared<QString>(logsText);
 	controller->session().plugins().logEvents(
-	) | rpl::start_with_next([=](const QString &line) {
+	) | rpl::on_next([=](const QString &line) {
 		*accumulated += line;
 		label->setText(*accumulated);
 		box->scrollToWidget(label);
