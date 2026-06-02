@@ -4,6 +4,7 @@ import json
 import shutil
 import time
 import uuid
+import threading
 from types import ModuleType
 from pathlib import Path
 
@@ -118,6 +119,24 @@ class BasePlugin(Plugin):
     def getClass(self):
         return MockClassObj(self.__class__.__name__)
 
+    def on_load(self):
+        if hasattr(self, "on_plugin_load"):
+            try:
+                self.on_plugin_load()
+            except Exception as e:
+                self.log(f"Error in on_plugin_load: {e}")
+        else:
+            super().on_load()
+
+    def on_unload(self):
+        if hasattr(self, "on_plugin_unload"):
+            try:
+                self.on_plugin_unload()
+            except Exception as e:
+                self.log(f"Error in on_plugin_unload: {e}")
+        else:
+            super().on_unload()
+
     def _load_settings(self):
         try:
             if self._settings_path.exists():
@@ -159,17 +178,47 @@ class BasePlugin(Plugin):
         else:
             print(f"[{self.__class__.__name__}] {text}")
 
-    def add_on_send_message_hook(self):
+    def add_on_send_message_hook(self, *args, **kwargs):
         self.log("Registered send_message hook")
 
-    def add_hook(self, name, match_substring=False, priority=100):
+    def add_hook(self, name, match_substring=False, priority=100, *args, **kwargs):
         self.log(f"Registered hook: {name}")
 
-    def hook_method(self, method, hook):
+    def hook_method(self, method, hook, *args, **kwargs):
         self.log(f"Hooked method: {method}")
 
-    def unhook_method(self, method, hook):
+    def unhook_method(self, method, hook, *args, **kwargs):
         self.log(f"Unhooked method: {method}")
+
+    def add_menu_item(self, item_data):
+        item_id = str(uuid.uuid4())
+        item_data.id = item_id
+        event = {
+            "action": "add_menu_item",
+            "id": item_id,
+            "text": getattr(item_data, "text", ""),
+            "icon": getattr(item_data, "icon", ""),
+            "menu_type": getattr(item_data, "menu_type", 1)
+        }
+        _menu_item_handlers[item_id] = getattr(item_data, "on_click", None)
+        try:
+            os.write(1, bytes(json.dumps(event, ensure_ascii=False) + "\n", "utf-8"))
+        except Exception as e:
+            print(f"Error writing add_menu_item to stdout: {e}", file=sys.stderr)
+        return item_data
+
+    def remove_menu_item(self, item_data):
+        item_id = getattr(item_data, "id", None)
+        if item_id:
+            _menu_item_handlers.pop(item_id, None)
+            event = {
+                "action": "remove_menu_item",
+                "id": item_id
+            }
+            try:
+                os.write(1, bytes(json.dumps(event, ensure_ascii=False) + "\n", "utf-8"))
+            except Exception as e:
+                print(f"Error writing remove_menu_item to stdout: {e}", file=sys.stderr)
 
 class MethodHook:
     def __init__(self, *args, **kwargs): pass
@@ -181,10 +230,12 @@ class XposedHook:
     def __init__(self, *args, **kwargs): pass
 
 class MenuItemData:
-    def __init__(self, *args, **kwargs): pass
+    def __init__(self, *args, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
 class MenuItemType:
-    pass
+    CHAT_ACTION_MENU = 1
 
 # Register base_plugin
 register_mock_module("base_plugin", {
@@ -282,7 +333,7 @@ register_mock_module("ui.alert", {
 
 # Android utils
 register_mock_module("android_utils", {
-    "run_on_ui_thread": lambda func: func() if callable(func) else None,
+    "run_on_ui_thread": lambda func, *args, **kwargs: func() if callable(func) else None,
     "log": lambda text: print(f"[Android Log] {text}"),
     "copy_to_clipboard": lambda text: print(f"[Clipboard] Copied: {text}"),
     "OnClickListener": Mock("OnClickListener"),
@@ -425,17 +476,28 @@ def send_message(params):
     except Exception as e:
         print(f"Error writing send_message to stdout: {e}", file=sys.stderr)
 
+_menu_item_handlers = {}
+_last_active_chat_id = 0
+
+class MockLastFragment:
+    def getDialogId(self):
+        return _last_active_chat_id
+    def getContext(self):
+        return Mock("Context")
+    def getClass(self):
+        return MockClassObj("org.telegram.ui.ActionBar.BaseFragment")
+
 register_mock_module("client_utils", {
     "send_message": send_message,
     "get_send_messages_helper": lambda: MockSendMessagesHelper(),
     "get_account_instance": lambda: MockAccountInstance(),
     "get_messages_controller": lambda: Mock("MessagesController"),
     "get_file_loader": lambda: Mock("FileLoader"),
-    "get_last_fragment": lambda: Mock("LastFragment"),
+    "get_last_fragment": lambda: MockLastFragment(),
     "send_request": lambda *args, **kwargs: Mock("Request"),
     "get_notification_center": lambda *args: Mock("NotificationCenter"),
     "NotificationCenterDelegate": Mock("NotificationCenterDelegate"),
-    "run_on_queue": lambda func, *args: func() if callable(func) else None,
+    "run_on_queue": lambda func, *args, **kwargs: func() if callable(func) else None,
     "get_media_data_controller": lambda *args: Mock("MediaDataController"),
     "EXTERNAL_NETWORK_QUEUE": Mock("EXTERNAL_NETWORK_QUEUE"),
     "get_user_config": lambda: Mock("UserConfig"),
@@ -602,12 +664,26 @@ register_mock_module("androidx.core.content", {
 })
 
 # org.telegram.*
+class MockContext:
+    def getFilesDir(self):
+        d = os.path.abspath("temp")
+        os.makedirs(d, exist_ok=True)
+        return JavaFile(d)
+    def __getattr__(self, name):
+        if name.startswith('__'):
+            raise AttributeError(name)
+        return Mock(f"Context.{name}")
+
 class MockApplicationLoader:
+    applicationContext = MockContext()
     @staticmethod
     def getFilesDirFixed():
         d = os.path.abspath("temp")
         os.makedirs(d, exist_ok=True)
         return d
+    @classmethod
+    def getClass(cls):
+        return MockClassObj("org.telegram.messenger.ApplicationLoader")
 
 class MockFileLoader:
     @staticmethod
@@ -781,9 +857,26 @@ register_mock_module("file_utils", {
 register_mock_module("markdown_utils", {
     "to_html": lambda text: text,
 })
+class MockPluginSettings:
+    _lock = threading.Lock()
+    _settings_cache = {}
+
+    @staticmethod
+    def get_setting(plugin_id, key, default=None):
+        return default
+    @staticmethod
+    def set_setting(plugin_id, key, value):
+        pass
+    @staticmethod
+    def _save_settings_to_file():
+        pass
+
 register_mock_module("plugin_settings", {
-    "get_settings": lambda *args: {},
-    "save_settings": lambda *args: None,
+    "get_setting": MockPluginSettings.get_setting,
+    "set_setting": MockPluginSettings.set_setting,
+    "_save_settings_to_file": MockPluginSettings._save_settings_to_file,
+    "_lock": MockPluginSettings._lock,
+    "_settings_cache": MockPluginSettings._settings_cache,
 })
 
 # Mocking packages needed by ExteraGram plugins
@@ -871,7 +964,10 @@ register_mock_module("extera_utils.classes", {
     "java_subclass": mock_java_subclass,
     "joverride": mock_joverride,
 })
-register_mock_module("zwylib_companion")
+register_mock_module("zwylib_companion", {
+    "autoupdates_tasks": [],
+    "pending_commands": {},
+})
 register_mock_module("com.exteragram.messenger.plugins.models", {
     "CustomSetting": Mock("CustomSetting"),
 })

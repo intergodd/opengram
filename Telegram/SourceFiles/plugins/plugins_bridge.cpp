@@ -137,6 +137,7 @@ void Bridge::ensureDirectory() {
 }
 
 void Bridge::start() {
+	_menuItems.clear();
 	const auto root = PluginsRoot();
 	QDir().mkpath(root);
 
@@ -357,6 +358,18 @@ rpl::producer<QString> Bridge::logEvents() const {
 	return _logEvents.events();
 }
 
+const std::vector<MenuItem> &Bridge::menuItems() const {
+	return _menuItems;
+}
+
+void Bridge::triggerMenuItemClick(const QString &id, not_null<PeerData*> peer) {
+	sendEvent({
+		{ u"event"_q, u"menu_item_click"_q },
+		{ u"id"_q, id },
+		{ u"chat"_q, QString::number(peer->id.value) },
+	});
+}
+
 void Bridge::handleIncoming(not_null<HistoryItem*> item) {
 	if (item->out()) {
 		return;
@@ -448,6 +461,25 @@ void Bridge::handleAction(const QJsonObject &action) {
 				content,
 				isPhoto ? SendMediaType::Photo : SendMediaType::File,
 				action);
+		}
+	} else if (type == u"add_menu_item"_q) {
+		const auto id = action.value(u"id"_q).toString();
+		const auto text = action.value(u"text"_q).toString();
+		const auto icon = action.value(u"icon"_q).toString();
+		const auto menuType = action.value(u"menu_type"_q).toInt(1);
+		if (!id.isEmpty() && !text.isEmpty()) {
+			_menuItems.push_back({ id, text, icon, menuType });
+			_changes.fire({});
+		}
+	} else if (type == u"remove_menu_item"_q) {
+		const auto id = action.value(u"id"_q).toString();
+		const auto removed = std::remove_if(
+			_menuItems.begin(),
+			_menuItems.end(),
+			[&](const MenuItem &item) { return item.id == id; });
+		if (removed != _menuItems.end()) {
+			_menuItems.erase(removed, _menuItems.end());
+			_changes.fire({});
 		}
 	} else if (type == u"log"_q) {
 		const auto text = action.value(u"text"_q).toString();

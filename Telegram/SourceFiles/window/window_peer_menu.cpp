@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_peer_menu.h"
 
+#include "plugins/plugins_bridge.h"
+
 #include "base/call_delayed.h"
 #include "menu/menu_check_item.h"
 #include "boxes/about_box.h"
@@ -3923,6 +3925,35 @@ void FillDialogsEntryMenu(
 		Dialogs::EntryState request,
 		const PeerMenuCallback &callback) {
 	Filler(controller, request, callback).fill();
+
+	const auto peer = request.key.peer();
+	if (peer) {
+		const auto &plugins = controller->session().plugins();
+		bool first = true;
+		for (const auto &item : plugins.menuItems()) {
+			if (item.menuType == 1) { // CHAT_ACTION_MENU
+				if (first) {
+					callback(PeerMenuCallback::Args{ .isSeparator = true });
+					first = false;
+				}
+				const style::icon *iconPtr = nullptr;
+				if (item.icon == u"msg_user_remove"_q) iconPtr = &st::menuIconDelete;
+				else if (item.icon == u"msg_bots_solar"_q) iconPtr = &st::menuIconProfile;
+				else if (item.icon == u"msg_autodelete_1m_solar"_q) iconPtr = &st::menuIconCancel;
+				else if (item.icon == u"msg_online"_q) iconPtr = &st::menuIconProfile;
+				else if (item.icon == u"msg_contacts_solar"_q) iconPtr = &st::menuIconProfile;
+				else if (item.icon == u"msg_folders_groups_solar"_q) iconPtr = &st::menuIconProfile;
+				else iconPtr = &st::menuIconProfile;
+
+				callback(
+					item.text,
+					[=] {
+						controller->session().plugins().triggerMenuItemClick(item.id, peer);
+					},
+					iconPtr);
+			}
+		}
+	}
 }
 
 bool FillVideoChatMenu(

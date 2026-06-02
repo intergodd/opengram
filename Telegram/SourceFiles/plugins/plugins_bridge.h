@@ -21,6 +21,13 @@ class Session;
 
 namespace Plugins {
 
+struct MenuItem {
+	QString id;
+	QString text;
+	QString icon;
+	int menuType = 1;
+};
+
 struct Plugin {
 	QString fileName;
 	QString name;
@@ -34,6 +41,9 @@ class Bridge final {
 public:
 	explicit Bridge(not_null<Main::Session*> session);
 	~Bridge();
+
+	[[nodiscard]] const std::vector<MenuItem> &menuItems() const;
+	void triggerMenuItemClick(const QString &id, not_null<PeerData*> peer);
 
 	[[nodiscard]] QString directory() const;
 	[[nodiscard]] std::vector<Plugin> list() const;
@@ -73,6 +83,7 @@ private:
 	QProcess _process;
 	rpl::event_stream<> _changes;
 	rpl::event_stream<QString> _logEvents;
+	std::vector<MenuItem> _menuItems;
 	rpl::lifetime _lifetime;
 
 };

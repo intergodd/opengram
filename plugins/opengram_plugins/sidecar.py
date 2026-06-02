@@ -56,6 +56,20 @@ def main(argv=None):
                 reply_to=event.get("reply_to", 0),
                 reply_path=event.get("reply_path", ""),
             )
+        elif kind == "menu_item_click":
+            item_id = event.get("id")
+            chat_id = event.get("chat")
+            if item_id and chat_id:
+                try:
+                    compatibility._last_active_chat_id = int(chat_id)
+                except ValueError:
+                    pass
+                handler = compatibility._menu_item_handlers.get(item_id)
+                if handler:
+                    try:
+                        handler(compatibility.Mock("Activity"))
+                    except Exception as e:
+                        print(f"Error in menu item handler: {e}", file=sys.stderr)
         elif kind == "reload":
             manager.reload()
         elif kind == "shutdown":
