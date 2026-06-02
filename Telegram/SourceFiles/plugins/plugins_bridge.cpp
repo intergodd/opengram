@@ -85,7 +85,6 @@ void CopyTree(const QString &from, const QString &to) {
 	return cWorkingDir() + u"plugins"_q;
 }
 
-<<<<<<< HEAD
 [[nodiscard]] QString CanonicalName(const QString &fileName) {
 	return fileName.endsWith(kDisabledSuffix, Qt::CaseInsensitive)
 		? fileName.left(fileName.size() - kDisabledSuffix.size())
