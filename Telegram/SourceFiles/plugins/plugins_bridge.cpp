@@ -169,6 +169,7 @@ void Bridge::start() {
 	QObject::connect(&_process, &QProcess::readyReadStandardError, [=] {
 		const auto errorOutput = QString::fromUtf8(_process.readAllStandardError());
 		LOG(("Plugins Error: %1").arg(errorOutput));
+		_logEvents.fire(errorOutput);
 	});
 	QObject::connect(
 		&_process,
@@ -352,6 +353,10 @@ rpl::producer<> Bridge::changes() const {
 	return _changes.events();
 }
 
+rpl::producer<QString> Bridge::logEvents() const {
+	return _logEvents.events();
+}
+
 void Bridge::handleIncoming(not_null<HistoryItem*> item) {
 	if (item->out()) {
 		return;
@@ -445,7 +450,9 @@ void Bridge::handleAction(const QJsonObject &action) {
 				action);
 		}
 	} else if (type == u"log"_q) {
-		LOG(("Plugins: %1").arg(action.value(u"text"_q).toString()));
+		const auto text = action.value(u"text"_q).toString();
+		LOG(("Plugins: %1").arg(text));
+		_logEvents.fire(text + '\n');
 	}
 }
 

@@ -51,6 +51,7 @@ public:
 		const QString &replyPath);
 
 	[[nodiscard]] rpl::producer<> changes() const;
+	[[nodiscard]] rpl::producer<QString> logEvents() const;
 
 	[[nodiscard]] static std::optional<Plugin> ReadMetadata(
 		const QString &path);
@@ -71,6 +72,7 @@ private:
 	const not_null<Main::Session*> _session;
 	QProcess _process;
 	rpl::event_stream<> _changes;
+	rpl::event_stream<QString> _logEvents;
 	rpl::lifetime _lifetime;
 
 };

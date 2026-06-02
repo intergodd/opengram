@@ -296,7 +296,7 @@ void ShowManagerBox(not_null<Window::SessionController*> controller) {
 	controller->show(Box(ManagerBox, controller));
 }
 
-void LogsBox(not_null<Ui::GenericBox*> box) {
+void LogsBox(not_null<Ui::GenericBox*> box, not_null<Window::SessionController*> controller) {
 	box->setTitle(rpl::single(u"Debug Logs"_q));
 	box->setWidth(st::boxWideWidth);
 
@@ -325,6 +325,11 @@ void LogsBox(not_null<Ui::GenericBox*> box) {
 		st::boxLabel));
 	label->setSelectable(true);
 
+	controller->session().plugins().logEvents(
+	) | rpl::start_with_next([=](const QString &line) {
+		label->setText(label->text() + line);
+	}, box->lifetime());
+
 	box->addButton(tr::lng_close(), [=] { box->closeBox(); });
 	box->addButton(u"Refresh"_q, [=] {
 		QFile file(cWorkingDir() + u"log.txt"_q);
@@ -347,7 +352,7 @@ void LogsBox(not_null<Ui::GenericBox*> box) {
 }
 
 void ShowLogsBox(not_null<Window::SessionController*> controller) {
-	controller->show(Box(LogsBox));
+	controller->show(Box(LogsBox, controller));
 }
 
 } // namespace Plugins
