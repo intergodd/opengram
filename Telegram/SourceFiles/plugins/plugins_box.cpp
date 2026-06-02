@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "plugins/plugins_box.h"
 #include <QtCore/QFile>
+#include <rpl/rpl.h>
 #include "logs.h"
 
 #include "plugins/plugins_bridge.h"
@@ -326,14 +327,16 @@ void LogsBox(not_null<Ui::GenericBox*> box, not_null<Window::SessionController*>
 		st::boxLabel));
 	label->setSelectable(true);
 
+	const auto accumulated = std::make_shared<QString>(logsText);
 	controller->session().plugins().logEvents(
 	) | rpl::start_with_next([=](const QString &line) {
-		label->setText(label->text() + line);
+		*accumulated += line;
+		label->setText(*accumulated);
 		box->scrollToWidget(label);
 	}, box->lifetime());
 
 	box->addButton(tr::lng_close(), [=] { box->closeBox(); });
-	box->addButton(u"Refresh"_q, [=] {
+	box->addButton(rpl::single(u"Refresh"_q), [=] {
 		QFile file(cWorkingDir() + u"log.txt"_q);
 		QString newText;
 		if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {

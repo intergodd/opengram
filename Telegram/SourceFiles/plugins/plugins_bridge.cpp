@@ -170,7 +170,7 @@ void Bridge::start() {
 	QObject::connect(&_process, &QProcess::readyReadStandardError, [=] {
 		const auto errorOutput = QString::fromUtf8(_process.readAllStandardError());
 		LOG(("Plugins Error: %1").arg(errorOutput));
-		_logEvents.fire(errorOutput);
+		_logEvents.fire_copy(errorOutput);
 	});
 	QObject::connect(
 		&_process,
@@ -484,7 +484,7 @@ void Bridge::handleAction(const QJsonObject &action) {
 	} else if (type == u"log"_q) {
 		const auto text = action.value(u"text"_q).toString();
 		LOG(("Plugins: %1").arg(text));
-		_logEvents.fire(text + '\n');
+		_logEvents.fire_copy(text + '\n');
 	}
 }
 
