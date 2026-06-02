@@ -45,7 +45,14 @@ def register_mock_module(name, attrs=None):
 class TL_messageMediaPhoto:
     pass
 
-class TLRPC:
+class TLRPCMeta(type):
+    def __getattr__(cls, name):
+        class DummyClass:
+            pass
+        DummyClass.__name__ = name
+        return DummyClass
+
+class TLRPC(metaclass=TLRPCMeta):
     TL_messageMediaPhoto = TL_messageMediaPhoto
     TL_photoSize = Mock("TL_photoSize")
 
@@ -56,11 +63,15 @@ class HookStrategy:
     DEFAULT = 0
     CANCEL = 1
     REPLACE = 2
+    CONTINUE = 3
+    MODIFY_FINAL = 4
 
 class HookResult:
-    def __init__(self, strategy=0, value=None):
+    def __init__(self, strategy=0, value=None, **kwargs):
         self.strategy = strategy
         self.value = value
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
 class BasePlugin(Plugin):
     def __init__(self):
@@ -119,14 +130,34 @@ class BasePlugin(Plugin):
     def hook_method(self, method, hook):
         self.log(f"Hooked method: {method}")
 
+    def unhook_method(self, method, hook):
+        self.log(f"Unhooked method: {method}")
+
+class MethodHook:
+    def __init__(self, *args, **kwargs): pass
+
+class MethodReplacement:
+    def __init__(self, *args, **kwargs): pass
+
+class XposedHook:
+    def __init__(self, *args, **kwargs): pass
+
+class MenuItemData:
+    def __init__(self, *args, **kwargs): pass
+
+class MenuItemType:
+    pass
+
 # Register base_plugin
 register_mock_module("base_plugin", {
     "BasePlugin": BasePlugin,
     "HookResult": HookResult,
     "HookStrategy": HookStrategy,
-    "MethodHook": Mock("MethodHook"),
-    "MethodReplacement": Mock("MethodReplacement"),
-    "XposedHook": Mock("XposedHook"),
+    "MethodHook": MethodHook,
+    "MethodReplacement": MethodReplacement,
+    "XposedHook": XposedHook,
+    "MenuItemData": MenuItemData,
+    "MenuItemType": MenuItemType,
 })
 
 # Register hook_utils
@@ -149,6 +180,8 @@ register_mock_module("ui.settings", {
     "Switch": SettingItem,
     "Selector": SettingItem,
     "Text": SettingItem,
+    "EditText": SettingItem,
+    "Custom": SettingItem,
 })
 
 class BulletinHelper:
@@ -167,6 +200,10 @@ register_mock_module("ui.bulletin", {
 })
 
 class AlertDialogBuilder:
+    BUTTON_POSITIVE = -1
+    BUTTON_NEGATIVE = -2
+    BUTTON_NEUTRAL = -3
+
     def __init__(self, *args, **kwargs):
         pass
     def setMessage(self, msg):
@@ -224,23 +261,53 @@ class MockSendMessagesHelper:
         except Exception as e:
             print(f"Error writing send_file to stdout: {e}", file=sys.stderr)
 
+_outgoing_handlers = []
+
+def register_outgoing(handler):
+    _outgoing_handlers.append(handler)
+
 def send_message(params):
     chat_id = 0
     path = ""
+    text = ""
     reply_to_id = 0
-    if "peer" in params and hasattr(params["peer"], 'id'):
-        chat_id = params["peer"].id
-    if "path" in params:
-        path = params["path"]
-    if "replyToMsg" in params and params["replyToMsg"] and hasattr(params["replyToMsg"], 'id'):
-        reply_to_id = params["replyToMsg"].id
+    if isinstance(params, dict):
+        if "peer" in params and hasattr(params["peer"], 'id'):
+            chat_id = params["peer"].id
+        if "path" in params:
+            path = params["path"]
+        if "message" in params:
+            text = params["message"]
+        elif "text" in params:
+            text = params["text"]
+        if "replyToMsg" in params and params["replyToMsg"] and hasattr(params["replyToMsg"], 'id'):
+            reply_to_id = params["replyToMsg"].id
+    else:
+        if hasattr(params, "peer") and hasattr(params.peer, 'id'):
+            chat_id = params.peer.id
+        if hasattr(params, "path"):
+            path = params.path
+        if hasattr(params, "message"):
+            text = params.message
+        elif hasattr(params, "text"):
+            text = params.text
+        if hasattr(params, "replyToMsg") and params.replyToMsg and hasattr(params.replyToMsg, 'id'):
+            reply_to_id = params.replyToMsg.id
 
-    event = {
-        "action": "send_file",
-        "chat": str(chat_id),
-        "path": path,
-        "reply_to": reply_to_id
-    }
+    if path:
+        event = {
+            "action": "send_file",
+            "chat": str(chat_id),
+            "path": path,
+            "reply_to": reply_to_id
+        }
+    else:
+        event = {
+            "action": "send_message",
+            "chat": str(chat_id),
+            "text": text,
+            "reply_to": reply_to_id
+        }
     try:
         os.write(1, bytes(json.dumps(event, ensure_ascii=False) + "\n", "utf-8"))
     except Exception as e:
@@ -316,9 +383,14 @@ class ByteArrayOutputStream:
     def close(self):
         pass
 
+def dynamic_proxy(*args, **kwargs):
+    class MockProxy:
+        def __init__(self, *a, **kw): pass
+    return MockProxy
+
 register_mock_module("java", {
     "cast": lambda t, v: v,
-    "dynamic_proxy": lambda *args: Mock("Proxy"),
+    "dynamic_proxy": dynamic_proxy,
     "jint": int,
 })
 
@@ -382,8 +454,20 @@ register_mock_module("android.widget", {
     "ScrollView": Mock("ScrollView"),
 })
 
+class DialogInterfaceMeta(type):
+    def __getattr__(cls, name):
+        class DummyClass:
+            pass
+        DummyClass.__name__ = name
+        return DummyClass
+
+class DialogInterface(metaclass=DialogInterfaceMeta):
+    BUTTON_POSITIVE = -1
+    BUTTON_NEGATIVE = -2
+    BUTTON_NEUTRAL = -3
+
 register_mock_module("android.content", {
-    "DialogInterface": Mock("DialogInterface"),
+    "DialogInterface": DialogInterface,
     "Context": Mock("Context"),
     "ClipData": Mock("ClipData"),
     "ClipboardManager": Mock("ClipboardManager"),
@@ -441,6 +525,10 @@ class MessageObject:
             return "gif" in document.mime_type
         return False
 
+class MockBuildVars:
+    BUILD_VERSION_STRING = "13.0.0"
+    BUILD_VERSION = 130000
+
 register_mock_module("org.telegram.messenger", {
     "ApplicationLoader": MockApplicationLoader,
     "MessageObject": MessageObject,
@@ -452,9 +540,13 @@ register_mock_module("org.telegram.messenger", {
     "Utilities": Mock("Utilities"),
     "AndroidUtilities": Mock("AndroidUtilities"),
     "LocaleController": Mock("LocaleController"),
-    "BuildVars": Mock("BuildVars"),
+    "BuildVars": MockBuildVars,
     "ChatObject": Mock("ChatObject"),
     "UserObject": Mock("UserObject"),
+    "MessagesController": Mock("MessagesController"),
+    "MediaController": Mock("MediaController"),
+    "R": Mock("R"),
+    "NotificationCenter": Mock("NotificationCenter"),
 })
 
 register_mock_module("org.telegram.ui", {
@@ -488,11 +580,17 @@ register_mock_module("com.exteragram.messenger.utils", {
     "AppUtils": Mock("AppUtils"),
     "ChatUtils": Mock("ChatUtils"),
 })
+class MockPluginCellSettingFactory:
+    @staticmethod
+    def new_instance(*args, **kwargs):
+        return Mock("PluginCellSettingFactoryInstance")
+
 register_mock_module("com.exteragram.messenger.plugins", {
     "PluginsController": Mock("PluginsController"),
     "Plugin": Mock("Plugin"),
     "PluginsConstants": Mock("PluginsConstants"),
     "PythonPluginsEngine": Mock("PythonPluginsEngine"),
+    "PluginCellSettingFactory": MockPluginCellSettingFactory,
 })
 register_mock_module("com.exteragram.messenger.utils.chats", {
     "ChatUtils": Mock("ChatUtils"),
@@ -504,19 +602,48 @@ register_mock_module("de.robv.android.xposed", {
     "XC_MethodHook": Mock("XC_MethodHook"),
 })
 
+class MockVersion:
+    def __init__(self, version_str):
+        self.version_str = str(version_str)
+        self.parts = []
+        for part in self.version_str.split('.'):
+            try:
+                self.parts.append(int(part.strip()))
+            except ValueError:
+                self.parts.append(0)
+    def __ge__(self, other):
+        if not isinstance(other, MockVersion): return False
+        return self.parts >= other.parts
+    def __gt__(self, other):
+        if not isinstance(other, MockVersion): return False
+        return self.parts > other.parts
+    def __le__(self, other):
+        if not isinstance(other, MockVersion): return False
+        return self.parts <= other.parts
+    def __lt__(self, other):
+        if not isinstance(other, MockVersion): return False
+        return self.parts < other.parts
+    def __eq__(self, other):
+        if not isinstance(other, MockVersion): return False
+        return self.parts == other.parts
+
 # packaging / typing_extensions / local utilities
 register_mock_module("packaging")
 register_mock_module("packaging.version", {
-    "Version": lambda x: Mock("Version"),
+    "Version": MockVersion,
 })
+def mock_deprecated(*args, **kwargs):
+    return lambda func: func
+
 register_mock_module("typing_extensions", {
     "get_origin": lambda x: None,
     "get_args": lambda x: (),
     "overload": lambda x: x,
-    "deprecated": lambda x: x,
+    "deprecated": mock_deprecated,
 })
 register_mock_module("file_utils", {
     "get_file_extension": lambda path: os.path.splitext(path)[1],
+    "get_plugins_dir": lambda: os.path.abspath("installed"),
 })
 register_mock_module("markdown_utils", {
     "to_html": lambda text: text,
@@ -524,4 +651,67 @@ register_mock_module("markdown_utils", {
 register_mock_module("plugin_settings", {
     "get_settings": lambda *args: {},
     "save_settings": lambda *args: None,
+})
+
+# Mocking packages needed by ExteraGram plugins
+class TLObject:
+    pass
+
+register_mock_module("org.telegram.tgnet", {
+    "TLRPC": TLRPC,
+    "TLObject": TLObject,
+})
+
+register_mock_module("org.telegram.tgnet.tl", {
+    "TL_stars": Mock("TL_stars"),
+})
+
+register_mock_module("dalvik.system", {
+    "InMemoryDexClassLoader": Mock("InMemoryDexClassLoader"),
+})
+
+register_mock_module("android.app", {
+    "Activity": Mock("Activity"),
+})
+
+register_mock_module("java.nio", {
+    "ByteBuffer": Mock("ByteBuffer"),
+})
+
+register_mock_module("java.nio.charset", {
+    "Charset": Mock("Charset"),
+})
+
+register_mock_module("android.net", {
+    "Uri": Mock("Uri"),
+})
+
+register_mock_module("extera_utils")
+def mock_joverride(*args, **kwargs):
+    if len(args) == 1 and callable(args[0]):
+        return args[0]
+    return lambda func: func
+
+class ExteraBase:
+    def __init__(self, *args, **kwargs): pass
+
+def mock_java_subclass(*args, **kwargs):
+    def decorator(cls):
+        @classmethod
+        def new_instance(c, *a, **kw):
+            inst = c(*a, **kw)
+            inst.java = Mock("JavaInstance")
+            return inst
+        cls.new_instance = new_instance
+        return cls
+    return decorator
+
+register_mock_module("extera_utils.classes", {
+    "Base": ExteraBase,
+    "java_subclass": mock_java_subclass,
+    "joverride": mock_joverride,
+})
+register_mock_module("zwylib_companion")
+register_mock_module("com.exteragram.messenger.plugins.models", {
+    "CustomSetting": Mock("CustomSetting"),
 })

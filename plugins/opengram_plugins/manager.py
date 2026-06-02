@@ -21,6 +21,7 @@ from pathlib import Path
 
 from .host import FakeHost
 from .loader import PLG_SUFFIX, load_plg
+from . import compatibility
 
 
 class PluginManager:
@@ -122,12 +123,35 @@ class PluginManager:
         # Build mock parameters mimicking Java structures for Hook API
         params = HookParams(text, chat, reply_to, reply_path)
 
+        cancelled = False
+
+        # Run registered simple outgoing message handlers
+        for handler in compatibility._outgoing_handlers:
+            try:
+                res = handler(params.message)
+                if isinstance(res, str):
+                    params.message = res
+                elif res is False:
+                    cancelled = True
+            except Exception as e:
+                print(f"Error in simple outgoing handler: {e}", file=sys.stderr)
+
+        # Run full plugin hooks
         for plugin in self.plugins:
             if plugin in self._disabled:
                 continue
             if hasattr(plugin, "on_send_message_hook"):
                 # Call hook: on_send_message_hook(self, account, params)
-                self._safe(plugin, "on_send_message_hook", 0, params)
+                success, result = self._safe_run(plugin, "on_send_message_hook", 0, params)
+                if success and result:
+                    strategy = getattr(result, "strategy", result)
+                    if strategy == 1 or strategy == compatibility.HookStrategy.CANCEL or result == 1:
+                        cancelled = True
+                    elif str(strategy).endswith("CANCEL"):
+                        cancelled = True
+
+        if not cancelled:
+            compatibility.send_message(params)
 
     def unload_all(self):
         while self.plugins:
@@ -148,6 +172,14 @@ class PluginManager:
             self._report(getattr(plugin, "name", "?"), hook, exc)
             self._note_failure(plugin)
             return False
+
+    def _safe_run(self, plugin, hook, *args):
+        try:
+            return True, getattr(plugin, hook)(*args)
+        except Exception as exc:
+            self._report(getattr(plugin, "name", "?"), hook, exc)
+            self._note_failure(plugin)
+            return False, None
 
     def _note_failure(self, plugin):
         count = self._failures.get(plugin, 0) + 1

@@ -401,11 +401,18 @@ void Bridge::handleAction(const QJsonObject &action) {
 	if (type == u"send_message"_q) {
 		const auto raw = action.value(u"chat"_q).toString().toULongLong();
 		const auto text = action.value(u"text"_q).toString();
+		const auto replyToId = action.value(u"reply_to"_q).toInt();
 		if (!raw || text.isEmpty()) {
 			return;
 		}
 		const auto history = _session->data().history(PeerId(BareId(raw)));
-		auto message = Api::MessageToSend(Api::SendAction(history));
+		auto sendAction = Api::SendAction(history);
+		if (replyToId) {
+			sendAction.replyTo.messageId = FullMsgId(
+				history->peer->id,
+				MsgId(replyToId));
+		}
+		auto message = Api::MessageToSend(std::move(sendAction));
 		message.textWithTags = { text, {} };
 		_session->api().sendMessage(std::move(message));
 	} else if (type == u"send_file"_q) {
