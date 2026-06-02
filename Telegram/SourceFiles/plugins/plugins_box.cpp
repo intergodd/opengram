@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "plugins/plugins_box.h"
 #include <QtCore/QFile>
+#include "logs.h"
 
 #include "plugins/plugins_bridge.h"
 #include "core/file_utilities.h"
@@ -328,6 +329,7 @@ void LogsBox(not_null<Ui::GenericBox*> box, not_null<Window::SessionController*>
 	controller->session().plugins().logEvents(
 	) | rpl::start_with_next([=](const QString &line) {
 		label->setText(label->text() + line);
+		box->scrollToWidget(label);
 	}, box->lifetime());
 
 	box->addButton(tr::lng_close(), [=] { box->closeBox(); });

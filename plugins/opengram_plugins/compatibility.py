@@ -33,24 +33,54 @@ class Mock:
     def __eq__(self, other):
         return True
 
+class MockClassObj:
+    def __init__(self, name="MockClass"):
+        self.__name__ = name
+    def getDeclaredMethods(self):
+        return []
+    def getDeclaredFields(self):
+        return []
+    def getFields(self):
+        return []
+    def getMethods(self):
+        return []
+    def getName(self):
+        return self.__name__
+    def getSimpleName(self):
+        return self.__name__.split('.')[-1]
+
 def register_mock_module(name, attrs=None):
     mod = ModuleType(name)
+    mod.__path__ = []
     if attrs:
         for k, v in attrs.items():
             setattr(mod, k, v)
     sys.modules[name] = mod
+
+    parts = name.split(".")
+    for i in range(1, len(parts)):
+        parent_name = ".".join(parts[:i])
+        if parent_name in sys.modules:
+            parent = sys.modules[parent_name]
+            if not hasattr(parent, "__path__"):
+                parent.__path__ = []
+            setattr(parent, parts[i], mod)
     return mod
+
 
 # TLRPC / TL_messageMediaPhoto mock classes
 class TL_messageMediaPhoto:
     pass
 
 class TLRPCMeta(type):
+    _cache = {}
     def __getattr__(cls, name):
-        class DummyClass:
-            pass
-        DummyClass.__name__ = name
-        return DummyClass
+        if name not in cls._cache:
+            class DummyClass:
+                pass
+            DummyClass.__name__ = name
+            cls._cache[name] = DummyClass
+        return cls._cache[name]
 
 class TLRPC(metaclass=TLRPCMeta):
     TL_messageMediaPhoto = TL_messageMediaPhoto
@@ -76,9 +106,17 @@ class HookResult:
 class BasePlugin(Plugin):
     def __init__(self):
         super().__init__()
+        self.name = "unnamed"
+        self.version = "0.0.0"
+        self.description = ""
+        self.author = ""
+        self.id = ""
         self._settings = {}
         self._settings_path = Path("installed") / "plugin_settings.json"
         self._load_settings()
+
+    def getClass(self):
+        return MockClassObj(self.__class__.__name__)
 
     def _load_settings(self):
         try:
@@ -160,9 +198,30 @@ register_mock_module("base_plugin", {
     "MenuItemType": MenuItemType,
 })
 
+class MockSendMessageParams:
+    def __init__(self, *args, **kwargs):
+        pass
+    @classmethod
+    def of(cls, *args, **kwargs):
+        inst = cls()
+        inst.args = args
+        inst.kwargs = kwargs
+        return inst
+
+def mock_find_class(name):
+    if name == "org.telegram.messenger.SendMessagesHelper$SendMessageParams":
+        return MockSendMessageParams
+    if name == "org.telegram.ui.Stars.StarsController":
+        class MockStarsControllerClass:
+            @staticmethod
+            def getClass():
+                return MockClassObj("org.telegram.ui.Stars.StarsController")
+        return MockStarsControllerClass
+    return Mock(name)
+
 # Register hook_utils
 register_mock_module("hook_utils", {
-    "find_class": lambda name: Mock(name),
+    "find_class": mock_find_class,
     "get_private_field": lambda obj, name: Mock(name),
     "set_private_field": lambda obj, name, val: None,
 })
@@ -236,6 +295,14 @@ class MockAccountInstance:
         self.selectedAccount = 0
 
 class MockSendMessagesHelper:
+    @classmethod
+    def getClass(cls):
+        return MockClassObj("org.telegram.messenger.SendMessagesHelper")
+
+    @staticmethod
+    def getInstance(*args, **kwargs):
+        return MockSendMessagesHelper()
+
     def generatePhotoSizes(self, path, *args):
         return Mock("GeneratedPhoto")
 
@@ -260,6 +327,51 @@ class MockSendMessagesHelper:
             os.write(1, bytes(json.dumps(event, ensure_ascii=False) + "\n", "utf-8"))
         except Exception as e:
             print(f"Error writing send_file to stdout: {e}", file=sys.stderr)
+
+    @staticmethod
+    def prepareSendingPhoto(account, path, *args, **kwargs):
+        dialog_id = 0
+        reply_to_id = 0
+        if len(args) >= 2:
+            dialog_id = args[1]
+        if len(args) >= 3:
+            replyToMsg = args[2]
+            if replyToMsg and hasattr(replyToMsg, 'id'):
+                reply_to_id = replyToMsg.id
+
+        event = {
+            "action": "send_file",
+            "chat": str(dialog_id),
+            "path": path,
+            "reply_to": reply_to_id
+        }
+        try:
+            os.write(1, bytes(json.dumps(event, ensure_ascii=False) + "\n", "utf-8"))
+        except Exception as e:
+            print(f"Error writing send_photo to stdout: {e}", file=sys.stderr)
+
+    def sendMessage(self, send_params, *args, **kwargs):
+        if isinstance(send_params, MockSendMessageParams):
+            args = send_params.args
+            if len(args) >= 4:
+                webp_path = args[2]
+                chat_id = args[3]
+                reply_to_id = 0
+                if len(args) >= 5 and args[4] and hasattr(args[4], 'id'):
+                    reply_to_id = args[4].id
+                
+                event = {
+                    "action": "send_file",
+                    "chat": str(chat_id),
+                    "path": webp_path,
+                    "reply_to": reply_to_id
+                }
+                try:
+                    os.write(1, bytes(json.dumps(event, ensure_ascii=False) + "\n", "utf-8"))
+                except Exception as e:
+                    print(f"Error writing sendMessage to stdout: {e}", file=sys.stderr)
+        else:
+            print(f"sendMessage called with unknown params: {send_params}", file=sys.stderr)
 
 _outgoing_handlers = []
 
@@ -455,11 +567,14 @@ register_mock_module("android.widget", {
 })
 
 class DialogInterfaceMeta(type):
+    _cache = {}
     def __getattr__(cls, name):
-        class DummyClass:
-            pass
-        DummyClass.__name__ = name
-        return DummyClass
+        if name not in cls._cache:
+            class DummyClass:
+                pass
+            DummyClass.__name__ = name
+            cls._cache[name] = DummyClass
+        return cls._cache[name]
 
 class DialogInterface(metaclass=DialogInterfaceMeta):
     BUTTON_POSITIVE = -1
@@ -604,28 +719,46 @@ register_mock_module("de.robv.android.xposed", {
 
 class MockVersion:
     def __init__(self, version_str):
+        if isinstance(version_str, MockVersion):
+            self.version_str = version_str.version_str
+            self.parts = list(version_str.parts)
+            return
         self.version_str = str(version_str)
         self.parts = []
         for part in self.version_str.split('.'):
+            digits = ""
+            for char in part.strip():
+                if char.isdigit():
+                    digits += char
+                else:
+                    break
             try:
-                self.parts.append(int(part.strip()))
+                self.parts.append(int(digits) if digits else 0)
             except ValueError:
                 self.parts.append(0)
+
+    def _convert_other(self, other):
+        if isinstance(other, MockVersion):
+            return other
+        if isinstance(other, (str, bytes)):
+            return MockVersion(other)
+        return None
+
     def __ge__(self, other):
-        if not isinstance(other, MockVersion): return False
-        return self.parts >= other.parts
+        oth = self._convert_other(other)
+        return self.parts >= oth.parts if oth else False
     def __gt__(self, other):
-        if not isinstance(other, MockVersion): return False
-        return self.parts > other.parts
+        oth = self._convert_other(other)
+        return self.parts > oth.parts if oth else False
     def __le__(self, other):
-        if not isinstance(other, MockVersion): return False
-        return self.parts <= other.parts
+        oth = self._convert_other(other)
+        return self.parts <= oth.parts if oth else False
     def __lt__(self, other):
-        if not isinstance(other, MockVersion): return False
-        return self.parts < other.parts
+        oth = self._convert_other(other)
+        return self.parts < oth.parts if oth else False
     def __eq__(self, other):
-        if not isinstance(other, MockVersion): return False
-        return self.parts == other.parts
+        oth = self._convert_other(other)
+        return self.parts == oth.parts if oth else False
 
 # packaging / typing_extensions / local utilities
 register_mock_module("packaging")
@@ -692,8 +825,30 @@ def mock_joverride(*args, **kwargs):
         return args[0]
     return lambda func: func
 
-class ExteraBase:
+class MockMediaMetadataRetriever:
+    METADATA_KEY_DURATION = 9
+    OPTION_CLOSEST = 3
+    OPTION_CLOSEST_SYNC = 2
+
     def __init__(self, *args, **kwargs): pass
+    def setDataSource(self, *args, **kwargs): pass
+    def extractMetadata(self, *args, **kwargs): return "1000"
+    def getFrameAtTime(self, *args, **kwargs): return Mock("Bitmap")
+    def release(self): pass
+
+register_mock_module("android.media", {
+    "MediaMetadataRetriever": MockMediaMetadataRetriever,
+})
+
+class ExteraBase:
+    def __init__(self, *args, **kwargs):
+        pass
+    def getClass(self):
+        return MockClassObj(self.__class__.__name__)
+    def __getattr__(self, name):
+        if name.startswith('__'):
+            raise AttributeError(name)
+        return Mock(f"Base.{name}")
 
 def mock_java_subclass(*args, **kwargs):
     def decorator(cls):
@@ -701,6 +856,11 @@ def mock_java_subclass(*args, **kwargs):
         def new_instance(c, *a, **kw):
             inst = c(*a, **kw)
             inst.java = Mock("JavaInstance")
+            if hasattr(inst, "on_post_init"):
+                try:
+                    inst.on_post_init(*a, **kw)
+                except Exception as e:
+                    print(f"Error in on_post_init: {e}", file=sys.stderr)
             return inst
         cls.new_instance = new_instance
         return cls

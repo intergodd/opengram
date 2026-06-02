@@ -78,7 +78,7 @@ class PluginManager:
                 self._filepath = filepath
                 self.sizes = [MockSize(filepath)]
 
-        class MockMediaPhoto:
+        class MockMediaPhoto(compatibility.TLRPC.TL_messageMediaPhoto):
             def __init__(self, photo):
                 self.photo = photo
 
@@ -86,7 +86,12 @@ class PluginManager:
             def __init__(self, filepath):
                 self._filepath = filepath
                 self.mime_type = "image/gif" if filepath.endswith(".gif") else "image/png"
+                if filepath.endswith(".webp"):
+                    self.mime_type = "image/webp"
                 self.path = filepath
+                self.attributes = []
+                if filepath.endswith(".webp"):
+                    self.attributes.append(compatibility.TLRPC.TL_documentAttributeSticker())
 
         class MockMediaDocument:
             def __init__(self, document):

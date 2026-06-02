@@ -14,5 +14,11 @@ def load_plg(path):
     for value in vars(module).values():
         if isinstance(value, type) and issubclass(value, Plugin) and value is not Plugin:
             if value.__module__ == module.__name__:
-                return value()
+                inst = value()
+                for key in ['name', 'version', 'description', 'author', 'id']:
+                    val = getattr(module, f"__{key}__", getattr(module, key, None))
+                    if val is not None:
+                        if getattr(inst, key, None) in (None, 'unnamed', '0.0.0', ''):
+                            setattr(inst, key, val)
+                return inst
     raise ValueError(f"no Plugin subclass found in {path}")
