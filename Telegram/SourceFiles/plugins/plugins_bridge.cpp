@@ -166,6 +166,10 @@ void Bridge::start() {
 	QObject::connect(&_process, &QProcess::readyReadStandardOutput, [=] {
 		readActions();
 	});
+	QObject::connect(&_process, &QProcess::readyReadStandardError, [=] {
+		const auto errorOutput = QString::fromUtf8(_process.readAllStandardError());
+		LOG(("Plugins Error: %1").arg(errorOutput));
+	});
 	QObject::connect(
 		&_process,
 		&QProcess::errorOccurred,

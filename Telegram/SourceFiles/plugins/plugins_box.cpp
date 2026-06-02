@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "plugins/plugins_box.h"
+#include <QtCore/QFile>
 
 #include "plugins/plugins_bridge.h"
 #include "core/file_utilities.h"
@@ -293,6 +294,60 @@ void ShowInstallBox(
 
 void ShowManagerBox(not_null<Window::SessionController*> controller) {
 	controller->show(Box(ManagerBox, controller));
+}
+
+void LogsBox(not_null<Ui::GenericBox*> box) {
+	box->setTitle(rpl::single(u"Debug Logs"_q));
+	box->setWidth(st::boxWideWidth);
+
+	auto file = QFile(cWorkingDir() + u"log.txt"_q);
+	QString logsText;
+	if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+		const auto size = file.size();
+		if (size > 20000) {
+			file.seek(size - 20000);
+		}
+		logsText = QString::fromUtf8(file.readAll());
+		const auto firstNewline = logsText.indexOf('\n');
+		if (firstNewline != -1 && size > 20000) {
+			logsText = logsText.mid(firstNewline + 1);
+		}
+	} else {
+		logsText = u"Failed to open log.txt"_q;
+	}
+
+	const auto inner = box->verticalLayout();
+	Ui::AddSkip(inner);
+
+	const auto label = box->addRow(object_ptr<Ui::FlatLabel>(
+		box,
+		rpl::single(logsText),
+		st::boxLabel));
+	label->setSelectable(true);
+
+	box->addButton(tr::lng_close(), [=] { box->closeBox(); });
+	box->addButton(u"Refresh"_q, [=] {
+		QFile file(cWorkingDir() + u"log.txt"_q);
+		QString newText;
+		if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+			const auto size = file.size();
+			if (size > 20000) {
+				file.seek(size - 20000);
+			}
+			newText = QString::fromUtf8(file.readAll());
+			const auto firstNewline = newText.indexOf('\n');
+			if (firstNewline != -1 && size > 20000) {
+				newText = newText.mid(firstNewline + 1);
+			}
+		} else {
+			newText = u"Failed to open log.txt"_q;
+		}
+		label->setText(newText);
+	});
+}
+
+void ShowLogsBox(not_null<Window::SessionController*> controller) {
+	controller->show(Box(LogsBox));
 }
 
 } // namespace Plugins

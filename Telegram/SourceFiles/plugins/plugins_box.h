@@ -32,4 +32,6 @@ void ShowInstallBox(
 
 void ShowManagerBox(not_null<Window::SessionController*> controller);
 
+void ShowLogsBox(not_null<Window::SessionController*> controller);
+
 } // namespace Plugins

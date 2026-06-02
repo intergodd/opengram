@@ -61,6 +61,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_document.h"
 #include "data/data_photo.h"
 #include "plugins/plugins_bridge.h"
+#include "plugins/plugins_box.h"
 #include "core/core_cloud_password.h"
 #include "core/application.h"
 #include "base/unixtime.h"
@@ -4002,6 +4003,19 @@ void ApiWrap::sendMessage(
 		MessageToSend &&message,
 		std::optional<MsgId> localMessageId) {
 	const auto text = message.textWithTags.text.trimmed();
+	if (text == u".debugmode"_q) {
+		const auto history = message.action.history;
+		const auto peer = history->peer;
+		if (const auto window = Core::App().windowFor(peer)) {
+			window->invokeForSessionController(
+				&peer->session().account(),
+				peer,
+				[&](not_null<Window::SessionController*> controller) {
+					Plugins::ShowLogsBox(controller);
+				});
+		}
+		return;
+	}
 	if (text.startsWith('.') && text.size() > 1 && text[1].isLetterOrNumber()) {
 		const auto history = message.action.history;
 		const auto peer = history->peer;
