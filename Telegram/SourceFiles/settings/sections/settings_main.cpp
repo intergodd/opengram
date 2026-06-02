@@ -526,7 +526,7 @@ void BuildHelpSection(SectionBuilder &builder) {
 		.title = tr::opengram_settings_channel(),
 		.icon = { &st::menuIconOpengram },
 		.onClick = [=] {
-			UrlClickHandler::Open("https://t.me/opengram");
+			UrlClickHandler::Open("https://t.me/opengram_dev");
 		},
 		.keywords = { u"opengram"_q, u"channel"_q },
 	});
