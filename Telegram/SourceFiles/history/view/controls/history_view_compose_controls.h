@@ -473,6 +473,7 @@ private:
 	std::unique_ptr<Ui::RpWidget> _starEffectsCanvas;
 	std::unique_ptr<Ui::IconButton> _replaceMedia;
 	const not_null<Ui::EmojiButton*> _tabbedSelectorToggle;
+	Ui::IconButton *_pluginsToggle = nullptr;
 	rpl::producer<QString> _fieldCustomPlaceholder;
 	const not_null<Ui::InputField*> _field;
 	Ui::IconButton * const _botCommandStart = nullptr;

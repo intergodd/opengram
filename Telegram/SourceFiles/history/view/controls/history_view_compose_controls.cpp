@@ -17,6 +17,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/compose_ai_box.h"
 #include "boxes/edit_caption_box.h"
 #include "boxes/send_files_box.h"
+#include "plugins/plugins_box.h"
 #include "calls/group/ui/calls_group_stars_coloring.h"
 #include "calls/group/calls_group_stars_box.h"
 #include "chat_helpers/compose/compose_show.h"
@@ -1051,6 +1052,9 @@ ComposeControls::ComposeControls(
 , _tabbedSelectorToggle(Ui::CreateChild<Ui::EmojiButton>(
 	_wrap.get(),
 	_st.emoji))
+, _pluginsToggle(Ui::CreateChild<Ui::IconButton>(
+	_wrap.get(),
+	st::historyPluginsToggle))
 , _fieldCustomPlaceholder(std::move(descriptor.customPlaceholder))
 , _field(
 	Ui::CreateChild<Ui::InputField>(
@@ -1203,6 +1207,11 @@ void ComposeControls::setHistory(SetHistoryArgs &&args) {
 	session().local().readDraftsWithCursors(_history);
 	applyDraft();
 	orderControls();
+	_pluginsToggle->setClickedCallback([=] {
+		if (const auto controller = _show->resolveWindow()) {
+			Plugins::ShowManagerBox(controller);
+		}
+	});
 	_field->setMode(args.videoStream
 		? Ui::InputField::Mode::NoNewlines
 		: Ui::InputField::Mode::MultiLine);
@@ -2063,6 +2072,9 @@ void ComposeControls::init() {
 		_attachToggle->setAccessibleName(tr::lng_attach(tr::now));
 	}
 	_tabbedSelectorToggle->setAccessibleName(tr::lng_emoji_sticker_gif(tr::now));
+	if (_pluginsToggle) {
+		_pluginsToggle->setAccessibleName(u"Plugins"_q);
+	}
 
 	initField();
 	initTabbedSelector();
@@ -3542,6 +3554,7 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		- _send->width()
 		- (_editStars ? _editStars->width() : 0)
 		- _tabbedSelectorToggle->width()
+		- _pluginsToggle->width()
 		- (_likeShown ? _like->width() : 0)
 		- (_botCommandShown ? _botCommandStart->width() : 0)
 		- (_silent ? _silent->width() : 0)
@@ -3602,6 +3615,8 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 	}
 	_tabbedSelectorToggle->moveToRight(right, buttonsTop);
 	right += _tabbedSelectorToggle->width();
+	_pluginsToggle->moveToRight(right, buttonsTop);
+	right += _pluginsToggle->width();
 	if (_like) {
 		using Type = Controls::WriteRestrictionType;
 		if (_writeRestriction.current().type == Type::PremiumRequired) {
@@ -3672,6 +3687,9 @@ void ComposeControls::updateControlsVisibility() {
 	}
 	updateAiButtonVisibility();
 	updateSendAsFileVisibility();
+	if (_pluginsToggle) {
+		_pluginsToggle->show();
+	}
 }
 
 void ComposeControls::updateAiButtonVisibility() {

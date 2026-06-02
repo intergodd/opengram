@@ -1271,6 +1271,10 @@ historyGiftToUser: IconButton(historyAttach) {
 	icon: icon {{ "chat/input_gift", historyComposeIconFg }};
 	iconOver: icon {{ "chat/input_gift", historyComposeIconFgOver }};
 }
+historyPluginsToggle: IconButton(historyAttach) {
+	icon: icon {{ "menu/craft_tools-24x24", historyComposeIconFg }};
+	iconOver: icon {{ "menu/craft_tools-24x24", historyComposeIconFgOver }};
+}
 historySuggestPostToggle: IconButton(historyAttach) {
 	icon: icon{{ "chat/input_paid", historyComposeIconFg }};
 	iconOver: icon{{ "chat/input_paid", historyComposeIconFgOver }};
