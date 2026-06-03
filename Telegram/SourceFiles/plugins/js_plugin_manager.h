@@ -1,7 +1,5 @@
 #pragma once
 
-#include <QtQml/QJSEngine>
-#include <QtQml/QJSValue>
 #include <QtCore/QString>
 #include <QtCore/QDir>
 #include <vector>
@@ -28,10 +26,7 @@ struct LoadedJSPlugin {
 	QString version;
 	QString description;
 	QString author;
-	QJSValue pluginObj;
 };
-
-class JSPluginBridge;
 
 class JSPluginManager final {
 public:
@@ -57,7 +52,6 @@ public:
 
 	void addMenuItem(LoadedJSPlugin* plugin, const JSMenuItem &item);
 	void removeMenuItem(LoadedJSPlugin* plugin, const QString &id);
-	void registerPlugin(const QJSValue &pluginObj);
 
 	not_null<Main::Session*> session() const {
 		return _session;
@@ -68,12 +62,8 @@ private:
 	void ensureDirectory();
 
 	const not_null<Main::Session*> _session;
-	std::unique_ptr<QJSEngine> _engine;
-	JSPluginBridge* _bridgeObj = nullptr;
 	std::vector<LoadedJSPlugin> _plugins;
-
 	std::vector<std::pair<LoadedJSPlugin*, JSMenuItem>> _menuItems;
-
 	LoadedJSPlugin* _currentLoadingPlugin = nullptr;
 };
 

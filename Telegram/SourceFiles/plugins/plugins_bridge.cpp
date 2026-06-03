@@ -12,6 +12,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_common.h"
 #include "data/data_session.h"
 #include "data/data_peer.h"
+#include "data/data_user.h"
+#include "data/data_channel.h"
+#include "data/data_chat.h"
 #include "history/history.h"
 #include "history/history_item.h"
 #include "settings.h"
@@ -39,28 +42,8 @@ const auto kExteraSuffix = u".plugin"_q;
 		|| name.endsWith(kExteraSuffix, Qt::CaseInsensitive);
 }
 
-[[nodiscard]] QString PythonExecutable() {
-	// Prefer a Python runtime bundled next to the executable, so plugins work
-	// even when the user has no system Python installed.
-#ifdef Q_OS_WIN
-	const auto bundled = {
-		cExeDir() + u"python/python.exe"_q,
-		cExeDir() + u"python/pythonw.exe"_q,
-	};
-	const auto fallback = u"python"_q;
-#else // Q_OS_WIN
-	const auto bundled = {
-		cExeDir() + u"python/bin/python3"_q,
-		cExeDir() + u"python3"_q,
-	};
-	const auto fallback = u"python3"_q;
-#endif // Q_OS_WIN
-	for (const auto &candidate : bundled) {
-		if (QFile::exists(candidate)) {
-			return candidate;
-		}
-	}
-	return fallback;
+[[nodiscard]] QString NodeExecutable() {
+	return u"node"_q;
 }
 
 void CopyTree(const QString &from, const QString &to) {
@@ -141,25 +124,20 @@ void Bridge::start() {
 	const auto root = PluginsRoot();
 	QDir().mkpath(root);
 
-	// Seed the sidecar runtime (the opengram_plugins package and examples)
-	// from the copy shipped next to the executable, so the bridge runs even
-	// on a fresh profile.
 	const auto bundled = cExeDir() + u"plugins"_q;
 	if (bundled != root) {
-		CopyTree(bundled + u"/opengram_plugins"_q, root + u"/opengram_plugins"_q);
-		CopyTree(bundled + u"/examples"_q, root + u"/examples"_q);
+		CopyTree(bundled, root);
 	}
 
-	if (!QFile::exists(root + u"/opengram_plugins/sidecar.py"_q)) {
-		LOG(("Plugins: runtime missing, execution disabled (%1).").arg(root));
+	if (!QFile::exists(root + u"/js_sidecar.js"_q)) {
+		LOG(("Plugins: JS runtime missing, execution disabled (%1).").arg(root));
 		return;
 	}
 	ensureDirectory();
 
-	_process.setProgram(PythonExecutable());
+	_process.setProgram(NodeExecutable());
 	_process.setArguments({
-		u"-m"_q,
-		u"opengram_plugins.sidecar"_q,
+		root + u"/js_sidecar.js"_q,
 		directory(),
 	});
 	_process.setWorkingDirectory(root);
@@ -481,6 +459,196 @@ void Bridge::handleAction(const QJsonObject &action) {
 		if (removed != _menuItems.end()) {
 			_menuItems.erase(removed, _menuItems.end());
 			_changes.fire({});
+		}
+	} else if (type == u"send_request"_q) {
+		const auto reqType = action.value(u"type"_q).toString();
+		const auto params = action.value(u"params"_q).toObject();
+		const auto callbackId = action.value(u"callback_id"_q).toInt();
+
+		const auto chatVal = params.value(u"chat_id"_q);
+		const auto raw = chatVal.isDouble()
+			? static_cast<uint64>(chatVal.toDouble())
+			: chatVal.toString().toULongLong();
+
+		if (!raw) {
+			sendEvent({
+				{ u"event"_q, u"request_response"_q },
+				{ u"callback_id"_q, callbackId },
+				{ u"response"_q, QJsonValue::Null },
+				{ u"error"_q, QJsonObject{ { u"text"_q, u"PEER_ID_INVALID"_q } } }
+			});
+			return;
+		}
+
+		const auto history = _session->data().history(PeerId(BareId(raw)));
+		const auto peer = history->peer;
+
+		if (reqType == u"channels_getParticipants"_q) {
+			if (!peer->isChannel()) {
+				sendEvent({
+					{ u"event"_q, u"request_response"_q },
+					{ u"callback_id"_q, callbackId },
+					{ u"response"_q, QJsonValue::Null },
+					{ u"error"_q, QJsonObject{ { u"text"_q, u"PEER_NOT_CHANNEL"_q } } }
+				});
+				return;
+			}
+
+			const auto channel = peer->asChannel();
+			const auto offset = params.value(u"offset"_q).toInt();
+			const auto limit = params.value(u"limit"_q).toInt();
+
+			_session->api().request(MTPchannels_GetParticipants(
+				channel->inputChannel(),
+				MTP_channelParticipantsRecent(),
+				MTP_int(offset),
+				MTP_int(limit ? limit : 200),
+				MTP_long(0)
+			)).done([=](const MTPchannels_ChannelParticipants &result) mutable {
+				QJsonObject response;
+				QJsonArray usersArray;
+				QJsonArray partsArray;
+
+				result.match([&](const MTPDchannels_channelParticipants &data) {
+					for (const auto &userVal : data.vusers().v) {
+						userVal.match([&](const MTPDuser &u) {
+							QJsonObject uObj;
+							uObj[u"id"_q] = static_cast<double>(u.vid().v);
+							uObj[u"first_name"_q] = qs(u.vfirst_name());
+							uObj[u"last_name"_q] = qs(u.vlast_name().value_or_empty());
+							uObj[u"username"_q] = qs(u.vusername().value_or_empty());
+							uObj[u"bot"_q] = u.is_bot();
+							uObj[u"deleted"_q] = u.is_deleted();
+
+							if (u.vstatus()) {
+								u.vstatus()->match([&](const MTPDuserStatusOffline &status) {
+									QJsonObject sObj;
+									sObj[u"was_online"_q] = status.vwas_online().v;
+									uObj[u"status"_q] = sObj;
+								}, [&](const MTPDuserStatusOnline &) {
+									QJsonObject sObj;
+									sObj[u"online"_q] = true;
+									uObj[u"status"_q] = sObj;
+								}, [&](const auto &) {
+									uObj[u"status"_q] = QJsonObject();
+								});
+							}
+
+							usersArray.append(uObj);
+						});
+					}
+
+					for (const auto &partVal : data.vparticipants().v) {
+						partVal.match([&](const MTPDchannelParticipantCreator &p) {
+							QJsonObject pObj;
+							pObj[u"user_id"_q] = static_cast<double>(p.vuser_id().v);
+							pObj[u"creator"_q] = true;
+							partsArray.append(pObj);
+						}, [&](const MTPDchannelParticipantAdmin &p) {
+							QJsonObject pObj;
+							pObj[u"user_id"_q] = static_cast<double>(p.vuser_id().v);
+							pObj[u"admin"_q] = true;
+							partsArray.append(pObj);
+						}, [&](const MTPDchannelParticipantBanned &p) {
+							QJsonObject pObj;
+							pObj[u"user_id"_q] = static_cast<double>(peerFromMTP(p.vpeer()).value);
+							pObj[u"banned"_q] = true;
+							pObj[u"date"_q] = p.vdate().v;
+							partsArray.append(pObj);
+						}, [&](const auto &p) {
+							QJsonObject pObj;
+							pObj[u"user_id"_q] = static_cast<double>(p.vuser_id().v);
+							pObj[u"date"_q] = p.vdate().v;
+							partsArray.append(pObj);
+						});
+					}
+				}, [&](const auto &) {});
+
+				response[u"users"_q] = usersArray;
+				response[u"participants"_q] = partsArray;
+
+				sendEvent({
+					{ u"event"_q, u"request_response"_q },
+					{ u"callback_id"_q, callbackId },
+					{ u"response"_q, response },
+					{ u"error"_q, QJsonValue::Null }
+				});
+
+			}).fail([=]() mutable {
+				sendEvent({
+					{ u"event"_q, u"request_response"_q },
+					{ u"callback_id"_q, callbackId },
+					{ u"response"_q, QJsonValue::Null },
+					{ u"error"_q, QJsonObject{ { u"text"_q, u"API_ERROR"_q } } }
+				});
+			}).send();
+
+		} else if (reqType == u"channels_editBanned"_q) {
+			if (!peer->isChannel()) {
+				return;
+			}
+			const auto channel = peer->asChannel();
+			const auto userVal = params.value(u"user_id"_q);
+			const auto userId = userVal.isDouble()
+				? static_cast<uint64>(userVal.toDouble())
+				: userVal.toString().toULongLong();
+
+			const auto participant = _session->data().user(UserId(userId));
+			const auto rights = ChannelData::KickedRestrictedRights(participant);
+
+			_session->api().request(MTPchannels_EditBanned(
+				channel->inputChannel(),
+				participant->input(),
+				RestrictionsToMTP(rights)
+			)).done([=](const MTPUpdates &result) mutable {
+				_session->api().applyUpdates(result);
+				sendEvent({
+					{ u"event"_q, u"request_response"_q },
+					{ u"callback_id"_q, callbackId },
+					{ u"response"_q, true },
+					{ u"error"_q, QJsonValue::Null }
+				});
+			}).fail([=]() mutable {
+				sendEvent({
+					{ u"event"_q, u"request_response"_q },
+					{ u"callback_id"_q, callbackId },
+					{ u"response"_q, QJsonValue::Null },
+					{ u"error"_q, QJsonObject{ { u"text"_q, u"API_ERROR"_q } } }
+				});
+			}).send();
+
+		} else if (reqType == u"messages_deleteChatUser"_q) {
+			if (!peer->isChat()) {
+				return;
+			}
+			const auto chat = peer->asChat();
+			const auto userVal = params.value(u"user_id"_q);
+			const auto userId = userVal.isDouble()
+				? static_cast<uint64>(userVal.toDouble())
+				: userVal.toString().toULongLong();
+
+			const auto participant = _session->data().user(UserId(userId));
+
+			_session->api().request(MTPmessages_DeleteChatUser(
+				MTP_flags(0),
+				chat->inputChat(),
+				participant->asUser()->inputUser()
+			)).done([=](const MTPUpdates &result) mutable {
+				_session->api().applyUpdates(result);
+				sendEvent({
+					{ u"event"_q, u"request_response"_q },
+					{ u"callback_id"_q, callbackId },
+					{ u"response"_q, true },
+					{ u"error"_q, QJsonValue::Null }
+				});
+			}).fail([=]() mutable {
+				sendEvent({
+					{ u"event"_q, u"request_response"_q },
+					{ u"callback_id"_q, callbackId },
+					{ u"response"_q, QJsonValue::Null },
+					{ u"error"_q, QJsonObject{ { u"text"_q, u"API_ERROR"_q } } }
+				});
+			}).send();
 		}
 	} else if (type == u"log"_q) {
 		const auto text = action.value(u"text"_q).toString();
