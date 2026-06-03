@@ -436,6 +436,7 @@ void Bridge::handleAction(const QJsonObject &action) {
 		}
 		auto message = Api::MessageToSend(std::move(sendAction));
 		message.textWithTags = { text, {} };
+		message.fromPlugin = true;
 		_session->api().sendMessage(std::move(message));
 	} else if (type == u"send_file"_q) {
 		const auto raw = action.value(u"chat"_q).toString().toULongLong();
@@ -486,6 +487,10 @@ void Bridge::handleAction(const QJsonObject &action) {
 		LOG(("Plugins: %1").arg(text));
 		_logEvents.fire_copy(text + '\n');
 	}
+}
+
+bool Bridge::isRunning() const {
+	return (_process.state() == QProcess::Running);
 }
 
 } // namespace Plugins

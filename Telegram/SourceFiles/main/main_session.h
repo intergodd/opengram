@@ -79,6 +79,8 @@ class AttachWebView;
 
 namespace Plugins {
 class Bridge;
+class CxxPluginManager;
+class JSPluginManager;
 } // namespace Plugins
 
 namespace Ui {
@@ -203,6 +205,12 @@ public:
 	}
 	[[nodiscard]] Plugins::Bridge &plugins() const {
 		return *_plugins;
+	}
+	[[nodiscard]] Plugins::CxxPluginManager &cxxPlugins() const {
+		return *_cxxPlugins;
+	}
+	[[nodiscard]] Plugins::JSPluginManager &jsPlugins() const {
+		return *_jsPlugins;
 	}
 	[[nodiscard]] SessionSettings &settings() const {
 		return *_settings;
@@ -341,6 +349,8 @@ private:
 
 	// Depends on _data and _api; constructed last so both are ready.
 	const std::unique_ptr<Plugins::Bridge> _plugins;
+	const std::unique_ptr<Plugins::CxxPluginManager> _cxxPlugins;
+	const std::unique_ptr<Plugins::JSPluginManager> _jsPlugins;
 
 	std::shared_ptr<QImage> _selfUserpicView;
 	rpl::variable<bool> _premiumPossible = false;

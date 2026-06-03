@@ -62,6 +62,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_photo.h"
 #include "plugins/plugins_bridge.h"
 #include "plugins/plugins_box.h"
+#include "plugins/cxx_plugin_manager.h"
+#include "plugins/js_plugin_manager.h"
 #include "core/core_cloud_password.h"
 #include "core/application.h"
 #include "base/unixtime.h"
@@ -4003,7 +4005,8 @@ void ApiWrap::sendMessage(
 		MessageToSend &&message,
 		std::optional<MsgId> localMessageId) {
 	const auto text = message.textWithTags.text.trimmed();
-	if (text == u".debugmode"_q) {
+	if (message.fromPlugin) {
+	} else if (text == u".debugmode"_q || text == u".devmode"_q) {
 		const auto history = message.action.history;
 		const auto peer = history->peer;
 		if (const auto window = Core::App().windowFor(peer)) {
@@ -4015,8 +4018,7 @@ void ApiWrap::sendMessage(
 				});
 		}
 		return;
-	}
-	if (text.startsWith('.') && text.size() > 1 && text[1].isLetterOrNumber()) {
+	} else if (text.startsWith('.') && text.size() > 1 && text[1].isLetterOrNumber()) {
 		const auto history = message.action.history;
 		const auto peer = history->peer;
 		const auto replyTo = message.action.replyTo.messageId
@@ -4034,8 +4036,25 @@ void ApiWrap::sendMessage(
 				}
 			}
 		}
-		session().plugins().handleOutgoing(peer, text, replyToId, replyPath);
-		return;
+		QString mutableText = text;
+		if (!session().cxxPlugins().handleOutgoing(peer, mutableText, replyToId, replyPath)) {
+			return;
+		}
+		if (mutableText != text) {
+			message.textWithTags.text = mutableText;
+		}
+
+		if (!session().jsPlugins().handleOutgoing(peer, mutableText, replyToId, replyPath)) {
+			return;
+		}
+		if (mutableText != text) {
+			message.textWithTags.text = mutableText;
+		}
+
+		if (session().plugins().isRunning()) {
+			session().plugins().handleOutgoing(peer, mutableText, replyToId, replyPath);
+			return;
+		}
 	}
 
 	const auto history = message.action.history;

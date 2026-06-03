@@ -8,6 +8,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_peer_menu.h"
 
 #include "plugins/plugins_bridge.h"
+#include "plugins/cxx_plugin_manager.h"
+#include "plugins/js_plugin_manager.h"
 
 #include "base/call_delayed.h"
 #include "menu/menu_check_item.h"
@@ -3952,6 +3954,46 @@ void FillDialogsEntryMenu(
 					},
 					iconPtr);
 			}
+		}
+
+		const auto &cxxPlugins = controller->session().cxxPlugins();
+		for (const auto &pair : cxxPlugins.menuItems()) {
+			if (first) {
+				callback(PeerMenuCallback::Args{ .isSeparator = true });
+				first = false;
+			}
+			const auto plugin = pair.first;
+			const auto &item = pair.second;
+			const style::icon *iconPtr = &st::menuIconProfile;
+			if (item.icon == u"msg_user_remove"_q) iconPtr = &st::menuIconDelete;
+			else if (item.icon == u"msg_autodelete_1m_solar"_q) iconPtr = &st::menuIconCancel;
+
+			callback(
+				item.text,
+				[=] {
+					controller->session().cxxPlugins().triggerMenuItemClick(plugin, item.id, peer);
+				},
+				iconPtr);
+		}
+
+		const auto &jsPlugins = controller->session().jsPlugins();
+		for (const auto &pair : jsPlugins.menuItems()) {
+			if (first) {
+				callback(PeerMenuCallback::Args{ .isSeparator = true });
+				first = false;
+			}
+			const auto plugin = pair.first;
+			const auto &item = pair.second;
+			const style::icon *iconPtr = &st::menuIconProfile;
+			if (item.icon == u"msg_user_remove"_q) iconPtr = &st::menuIconDelete;
+			else if (item.icon == u"msg_autodelete_1m_solar"_q) iconPtr = &st::menuIconCancel;
+
+			callback(
+				item.text,
+				[=] {
+					controller->session().jsPlugins().triggerMenuItemClick(plugin, item.id, peer);
+				},
+				iconPtr);
 		}
 	}
 }

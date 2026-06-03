@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Документация по плагинам Opengram</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0b0f19;
+            --bg-secondary: #111827;
+            --accent: #2563eb;
+            --accent-hover: #3b82f6;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --border: #1f2937;
+            --success: #10b981;
+            --code-bg: #1e293b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 0;
+        }
+
+        header {
+            background-color: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #60a5fa, #2563eb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 2rem;
+        }
+
+        aside {
+            position: sticky;
+            top: 6rem;
+            height: calc(100vh - 8rem);
+            overflow-y: auto;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-menu li {
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-menu a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            display: block;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .nav-menu a:hover, .nav-menu a.active {
+            color: var(--text-primary);
+            background-color: var(--bg-secondary);
+            border-left: 4px solid var(--accent);
+        }
+
+        main {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 3rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        section {
+            margin-bottom: 4rem;
+        }
+
+        h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 0.5rem;
+            color: #60a5fa;
+        }
+
+        h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem 0;
+            color: #93c5fd;
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        .alert {
+            background: rgba(37, 99, 235, 0.1);
+            border-left: 4px solid var(--accent);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .alert h4 {
+            color: var(--accent-hover);
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .alert p {
+            margin-bottom: 0;
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+
+        .alert.warning {
+            background: rgba(245, 158, 11, 0.1);
+            border-left: 4px solid #f59e0b;
+        }
+
+        .alert.warning h4 {
+            color: #fbbf24;
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            margin-bottom: 2rem;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.95rem;
+        }
+
+        code {
+            color: #f472b6;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: 600;
+        }
+
+        pre code {
+            color: var(--text-primary);
+            font-weight: 400;
+        }
+
+        .file-path {
+            display: inline-block;
+            background-color: rgba(96, 165, 250, 0.15);
+            color: #93c5fd;
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-family: monospace;
+            margin-bottom: 1rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 2rem;
+        }
+
+        th, td {
+            border: 1px solid var(--border);
+            padding: 1rem;
+            text-align: left;
+        }
+
+        th {
+            background-color: rgba(31, 41, 55, 0.5);
+            font-family: 'Outfit', sans-serif;
+            color: #93c5fd;
+        }
+
+        td {
+            color: var(--text-secondary);
+        }
+
+        footer {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border);
+            margin-top: 4rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Opengram Plugins Platform</h1>
+        <div style="color: var(--text-secondary); font-weight: 500;">v1.0.0 (C++ & Python)</div>
+    </header>
+
+    <div class="container">
+        <aside>
+            <ul class="nav-menu">
+                <li><a href="#overview" class="active">Обзор</a></li>
+                <li><a href="#js-plugins">JS Плагины (.js)</a></li>
+                <li><a href="#cpp-plugins">C++ Плагины (.dll/.so)</a></li>
+                <li><a href="#python-plugins">Python Плагины (.plugin/.plg)</a></li>
+                <li><a href="#console-debug">Консоль отладки и Логи</a></li>
+            </ul>
+        </aside>
+
+        <main>
+            <section id="overview">
+                <h2>Обзор архитектуры плагинов</h2>
+                <p>Opengram поддерживает гибридную систему плагинов, позволяющую использовать как высокопроизводительные нативные C++ динамические библиотеки (.dll / .so), так и простые скриптовые плагины на Python, совместимые с экосистемой ExteraGram.</p>
+                
+                <div class="alert">
+                    <h4>Поддерживаемые типы файлов:</h4>
+                    <p>
+                        • <strong>JavaScript плагины</strong>: размещаются в папке <code>plugins/js/</code> с расширением <code>.js</code>.<br>
+                        • <strong>C++ плагины</strong>: размещаются в папке <code>plugins/cxx/</code> в виде скомпилированных динамических библиотек.<br>
+                        • <strong>Python плагины</strong>: размещаются в папке <code>plugins/installed/</code> с расширением <code>.plugin</code> или <code>.plg</code>.
+                    </p>
+                </div>
+            </section>
+
+            <!-- JS Plugins -->
+            <section id="js-plugins">
+                <h2>JavaScript Скриптовые Плагины (QJSEngine)</h2>
+                <p>JavaScript плагины работают во встроенной «песочнице» Qt внутри главного процесса, не требуя компиляции или тяжелых фоновых приложений. Они идеально подходят для быстрого создания функций, перехвата команд и кастомных кнопок меню.</p>
+                
+                <h3>Регистрация плагина</h3>
+                <p>Каждый JS-плагин представляет собой файл с расширением <code>.js</code> в папке <code>plugins/js/</code>. Он должен вызывать <code>opengram.registerPlugin()</code> и передавать объект с настройками и обработчиками событий.</p>
+                
+                <pre><code>opengram.registerPlugin({
+    name: "JS Модератор",
+    version: "1.0.0",
+    description: "Простой плагин для удаления участников на JavaScript",
+    author: "Raitorinkus",
+
+    // Вызывается при загрузке плагина
+    onLoad: function() {
+        opengram.log("JS Модератор успешно загружен!");
+        // Добавляем кнопку в контекстное меню чата
+        opengram.addMenuItem("js_kick_deleted", "Удалить удалённые аккаунты (JS)", "msg_user_remove");
+    },
+
+    // Вызывается при выгрузке плагина
+    onUnload: function() {
+        opengram.log("JS Модератор выгружен!");
+    },
+
+    // Хук исходящих сообщений (возврат false отменяет отправку)
+    onSendMessage: function(chatId, text, replyToId, replyPath) {
+        if (text === ".js_help") {
+            opengram.sendMessage(chatId, "Доступные команды: .js_help", replyToId);
+            return false; // отменить отправку оригинального сообщения .js_help в чат
+        }
+        return true; // продолжить обычную отправку сообщения
+    },
+
+    // Вызывается при клике на зарегистрированную кнопку в меню чата
+    onMenuItemClick: function(itemId, chatId) {
+        if (itemId === "js_kick_deleted") {
+            opengram.log("Начато удаление удалённых аккаунтов в чате " + chatId);
+            
+            // Вызов нативного MTProto запроса
+            opengram.sendRequest("channels_getParticipants", { chat_id: chatId, offset: 0, limit: 200 }, function(response, error) {
+                if (error) {
+                    opengram.log("Ошибка получения участников: " + error.text);
+                    return;
+                }
+                
+                var users = response.users;
+                var deletedCount = 0;
+                
+                for (var i = 0; i < users.length; i++) {
+                    var user = users[i];
+                    if (user.deleted) {
+                        deletedCount++;
+                        opengram.log("Удаляем пользователя: " + user.first_name + " (ID: " + user.id + ")");
+                        // Вызов бана
+                        opengram.sendRequest("channels_editBanned", { chat_id: chatId, user_id: user.id }, function(res, err) {
+                            if (err) opengram.log("Ошибка при удалении: " + err.text);
+                        });
+                    }
+                }
+                opengram.log("Всего найдено и удаляется удалённых аккаунтов: " + deletedCount);
+            });
+        }
+    }
+});</code></pre>
+
+                <h3>Доступные функции глобального API <code>opengram</code> (или <code>api</code>)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Метод</th>
+                            <th>Описание</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>log(text)</code></td>
+                            <td>Записывает строку логов в консоль отладки клиента.</td>
+                        </tr>
+                        <tr>
+                            <td><code>addMenuItem(id, text, icon)</code></td>
+                            <td>Добавляет кнопку в меню чата (три точки вверху или клик на чат). <code>icon</code> может быть <code>msg_user_remove</code> или <code>msg_autodelete_1m_solar</code>.</td>
+                        </tr>
+                        <tr>
+                            <td><code>removeMenuItem(id)</code></td>
+                            <td>Удаляет добавленную кнопку из меню.</td>
+                        </tr>
+                        <tr>
+                            <td><code>sendMessage(chatId, text, replyToId)</code></td>
+                            <td>Отправляет сообщение в чат с указанным ID. <code>replyToId</code> опционален.</td>
+                        </tr>
+                        <tr>
+                            <td><code>sendRequest(type, params, callback)</code></td>
+                            <td>Выполняет асинхронный MTProto запрос к API Telegram. Поддерживает <code>channels_getParticipants</code>, <code>channels_editBanned</code>, <code>messages_deleteChatUser</code>.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- C++ Plugins -->
+            <section id="cpp-plugins">
+                <h2>Нативные C++ Плагины</h2>
+                <p>C++ плагины загружаются динамически во время запуска клиента с использованием механизма <code>QLibrary</code>. Они имеют полный доступ к C++ структурам данных сессии, чатам, пользователям и сообщениям, обеспечивая максимальное быстродействие.</p>
+                
+                <h3>Интерфейс CxxPlugin</h3>
+                <p>Каждый C++ плагин должен наследоваться от базового класса <code>Plugins::CxxPlugin</code> и реализовывать его виртуальные функции:</p>
+                
+                <div class="file-path">Telegram/SourceFiles/plugins/cxx_plugin.h</div>
+                <pre><code>#pragma once
+
+#include &lt;QtCore/QString&gt;
+#include &lt;vector&gt;
+
+class PeerData;
+struct MsgId;
+
+namespace Plugins {
+
+struct CxxMenuItem {
+    QString id;
+    QString text;
+    QString icon;
+};
+
+class CxxPlugin {
+public:
+    virtual ~CxxPlugin() = default;
+
+    // Метаданные плагина
+    virtual QString name() const = 0;
+    virtual QString version() const = 0;
+    virtual QString description() const = 0;
+    virtual QString author() const = 0;
+
+    // Жизненный цикл
+    virtual void onLoad() {}
+    virtual void onUnload() {}
+
+    // Хук исходящих сообщений (возврат false отменяет отправку)
+    virtual bool onSendMessage(
+        not_null&lt;PeerData*&gt; peer,
+        QString &amp;text,
+        MsgId replyToId,
+        const QString &amp;replyPath) {
+        return true;
+    }
+
+    // Регистрация кастомных кнопок в меню (3 точки)
+    virtual std::vector&lt;CxxMenuItem&gt; menuItems() {
+        return {};
+    }
+
+    // Обработка нажатия на кнопку в меню
+    virtual void onMenuItemClick(
+        const QString &amp;itemId,
+        not_null&lt;PeerData*&gt; peer) {}
+};
+
+} // namespace Plugins</code></pre>
+
+                <h3>Пример простого C++ плагина (Модерация / User Manager)</h3>
+                <p>Ниже представлен исходный код плагина модерации, который отслеживает отправку команд и добавляет кнопки в меню чата.</p>
+                
+                <pre><code>#include "cxx_plugin.h"
+#include &lt;QtCore/QMessageBox&gt;
+
+class UserManagerCxx : public Plugins::CxxPlugin {
+public:
+    QString name() const override { return "C++ User Manager"; }
+    QString version() const override { return "1.0.0"; }
+    QString description() const override { return "Нативный плагин модерации чатов"; }
+    QString author() const override { return "Developer"; }
+
+    void onLoad() override {
+        // Инициализация
+    }
+
+    bool onSendMessage(
+        not_null&lt;PeerData*&gt; peer,
+        QString &amp;text,
+        MsgId replyToId,
+        const QString &amp;replyPath) override {
+        
+        if (text == ".cxx_test") {
+            text = "Привет из нативного C++ плагина!";
+        }
+        return true;
+    }
+
+    std::vector&lt;Plugins::CxxMenuItem&gt; menuItems() override {
+        return {
+            { "cxx_ban_deleted", "Удалить удаленные аккаунты (C++)", "msg_user_remove" }
+        };
+    }
+
+    void onMenuItemClick(
+        const QString &amp;itemId,
+        not_null&lt;PeerData*&gt; peer) override {
+        if (itemId == "cxx_ban_deleted") {
+            // Реализация удаления пользователей
+        }
+    }
+};
+
+// Экспортируемая функция фабрики
+extern "C" {
+    __declspec(dllexport) Plugins::CxxPlugin* create_plugin() {
+        return new UserManagerCxx();
+    }
+}</code></pre>
+
+                <h3>Сборка C++ плагина</h3>
+                <p>Скомпилируйте данный код как динамическую библиотеку (DLL на Windows) с использованием MSVC:</p>
+                <pre><code>cl /LD /EHsc /I"путь_к_Qt/include" /I"путь_к_opengram/Telegram/SourceFiles/plugins" user_manager_cxx.cpp /link /OUT:user_manager.dll</code></pre>
+                <p>После сборки поместите <code>user_manager.dll</code> в директорию <code>plugins/cxx/</code> рядом с исполняемым файлом Opengram.</p>
+            </section>
+
+            <!-- Python Plugins -->
+            <section id="python-plugins">
+                <h2>Python Плагины (ExteraGram)</h2>
+                <p>Python плагины выполняются в изолированном фоновом процессе (sidecar) и взаимодействуют с C++ по протоколу JSON-RPC. Благодаря слою совместимости <code>compatibility.py</code>, вы можете запускать плагины, написанные для Android-клиента ExteraGram.</p>
+                
+                <h3>Пример структуры Python плагина</h3>
+                <pre><code>import threading
+from base_plugin import BasePlugin, HookResult, HookStrategy, MenuItemData, MenuItemType
+from client_utils import send_message, get_messages_controller
+
+class MyPlugin(BasePlugin):
+    def on_plugin_load(self):
+        self.log("Python плагин успешно запущен!")
+        self.add_menu_item(MenuItemData(
+            menu_type=MenuItemType.CHAT_ACTION_MENU,
+            text="Очистить чат от ботов",
+            icon="msg_bots_solar",
+            on_click=self.clean_bots
+        ))
+
+    def clean_bots(self, context):
+        self.log("Запущена очистка ботов...")
+        # Логика очистки...</code></pre>
+
+                <div class="alert warning">
+                    <h4>Интерцептор исходящих команд:</h4>
+                    <p>Любое исходящее сообщение, начинающееся с точки (например, <code>.bandel</code>, <code>.debugmode</code>), перехватывается плагинами. Если плагин обрабатывает эту команду, он возвращает <code>HookStrategy.CANCEL</code>, предотвращая отправку текста команды в сеть.</p>
+                </div>
+            </section>
+
+            <!-- Debug and Logs -->
+            <section id="console-debug">
+                <h2>Консоль отладки и Логи</h2>
+                <p>Для разработчиков плагинов в Opengram встроена консоль отладки реального времени. Чтобы ее открыть, отправьте в любой чат команду:</p>
+                <pre><code>.debugmode</code></pre>
+                <p>или её алиас:</p>
+                <pre><code>.devmode</code></pre>
+                <p>Откроется окно консоли, в которое в реальном времени будут выводиться все системные сообщения, вызовы <code>self.log()</code> из Python-плагинов, ошибки интерпретатора и сообщения логов C++ плагинов.</p>
+            </section>
+        </main>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Opengram Plugin Platform. Разработано для улучшения пользовательского опыта.</p>
+    </footer>
+
+    <script>
+        // Простая навигация
+        const links = document.querySelectorAll('.nav-menu a');
+        links.forEach(link => {
+            link.addEventListener('click', (e) => {
+                links.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

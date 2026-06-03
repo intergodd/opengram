@@ -53,6 +53,7 @@ public:
 	void uninstall(const QString &fileName);
 	void setEnabled(const QString &fileName, bool enabled);
 	void requestReload();
+	[[nodiscard]] bool isRunning() const;
 
 	void handleOutgoing(
 		not_null<PeerData*> peer,

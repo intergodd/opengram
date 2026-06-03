@@ -1305,6 +1305,13 @@ PRIVATE
     plugins/plugins_bridge.h
     plugins/plugins_box.cpp
     plugins/plugins_box.h
+    plugins/cxx_plugin.h
+    plugins/cxx_plugin_manager.cpp
+    plugins/cxx_plugin_manager.h
+    plugins/js_plugin_manager.cpp
+    plugins/js_plugin_manager.h
+    plugins/js_plugin_bridge.cpp
+    plugins/js_plugin_bridge.h
     main/session/session_show.cpp
     main/session/session_show.h
     media/audio/media_audio.cpp
