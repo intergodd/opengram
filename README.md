@@ -1,14 +1,12 @@
 <div align="center">
-<img src="./docs/assets/icon.png" width="150" align="center">
+<img src="./docs/assets/opengram.svg" width="300" align="center" alt="opengram logo">
 
 # [opengram](https://github.com/intergodd/opengram)
 <a href='https://flathub.org/apps/xyz.intergod.opengram'>
   <img width='175' alt='Download on Flathub' src='https://dl.flathub.org/assets/badges/flathub-badge-en.svg'/>
 </a>
 
-[![Telegram Channel](https://img.shields.io/badge/channel-blue?logo=telegram&labelColor=gray)](https://t.me/opengram)
-[![Telegram Group](https://img.shields.io/badge/chat-blue?logo=telegram&labelColor=gray)](https://t.me/opengram_chat)
-[![AUR](https://img.shields.io/badge/AUR%20package-blue?logo=archlinux&labelColor=gray)](https://aur.archlinux.org/packages?K=opengram)
+[![Telegram Channel](https://img.shields.io/badge/channel-blue?logo=telegram&labelColor=gray)](https://t.me/opengram_dev)
 [![GitHub Downloads](https://img.shields.io/github/downloads/intergodd/opengram/total?logo=github)](https://github.com/intergodd/opengram/releases/latest)
 
 [**Telegram Desktop**](https://github.com/telegramdesktop/tdesktop) fork with Material Design and other improvements, which is based on the [Telegram API][telegram_api] and the [MTProto][telegram_proto] secure protocol.
