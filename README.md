@@ -5,6 +5,20 @@
 <a href='https://flathub.org/apps/xyz.intergod.opengram'>
 
 
+> ## Project status
+>
+> OpenGram is currently in maintenance mode and may be discontinued in the future.
+>
+> The main reasons are extremely long build times and the growing amount of project-specific issues that are difficult to maintain and fix. New features and updates may be delayed or stopped entirely.
+
+> ## Статус проекта
+>
+> OpenGram сейчас находится в режиме поддержки и в будущем может быть закрыт.
+>
+> Основные причины — очень долгая сборка проекта и большое количество специфичных ошибок, которые сложно исправлять и поддерживать. Добавление новых функций и выпуск обновлений могут быть замедлены или полностью прекращены.
+
+
+
 ## Features
 - Included own Material You theme with colorizer ([Day](https://t.me/addtheme/opengram_day), [Dark](https://t.me/addtheme/opengram_dark))
 - **Google Sans** font everywhere (except for Arabic characters, they use the **Vazirmatn** font)
