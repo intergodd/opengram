@@ -3,18 +3,7 @@
 
 # [opengram](https://github.com/intergodd/opengram)
 <a href='https://flathub.org/apps/xyz.intergod.opengram'>
-  <img width='175' alt='Download on Flathub' src='https://dl.flathub.org/assets/badges/flathub-badge-en.svg'/>
-</a>
 
-[![Telegram Channel](https://img.shields.io/badge/channel-blue?logo=telegram&labelColor=gray)](https://t.me/opengram_dev)
-[![GitHub Downloads](https://img.shields.io/github/downloads/intergodd/opengram/total?logo=github)](https://github.com/intergodd/opengram/releases/latest)
-
-[**Telegram Desktop**](https://github.com/telegramdesktop/tdesktop) fork with Material Design and other improvements, which is based on the [Telegram API][telegram_api] and the [MTProto][telegram_proto] secure protocol.
-
-The source code is published under GPLv3 with OpenSSL exception, the license is available [here][license]
-![preview](docs/assets/preview.png)
-![preview](docs/assets/themes.png)
-</div>
 
 ## Features
 - Included own Material You theme with colorizer ([Day](https://t.me/addtheme/opengram_day), [Dark](https://t.me/addtheme/opengram_dark))
@@ -54,22 +43,7 @@ The source code is published under GPLv3 with OpenSSL exception, the license is 
 - Show more info for unique gifts
 - If you would like to see a new feature in this list, please tell me in the [chat](https://t.me/opengram_chat)
 
-## For Arch Linux users [@omansh-krishn](https://github.com/omansh-krishn) made a [PKG repository](https://github.com/opengram/arch.git)
-You can use it right away by adding this to your pacman.conf
-```
-[opengram]
-SigLevel = Never
-Server = https://$repo.github.io/arch
-```
-Or you can use this script
-```
-sudo sh -c "curl -s https://raw.githubusercontent.com/opengram/arch/x86_64/installer.sh | bash"
-```
-
-## Build instructions
-* [Windows 64-bit][win64]
-* [macOS][mac]
-* [GNU/Linux using Docker][linux]
+]
 
 ## Third-party
 * **Qt 6** ([LGPL](http://doc.qt.io/qt-6/lgpl.html)) and **Qt 5.15** ([LGPL](http://doc.qt.io/qt-5/lgpl.html)) slightly patched
